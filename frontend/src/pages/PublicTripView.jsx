@@ -1,18 +1,19 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { getTrip, getTrips, saveTrips, MASTER_CITIES, MASTER_ACTIVITIES } from '../utils/storage';
-import { Calendar, MapPin, IndianRupee, Compass, Copy } from 'lucide-react';
+import { Calendar, MapPin, IndianRupee, Compass, Copy, Share2, Globe, MessageCircle } from 'lucide-react';
 
 export default function PublicTripView() {
   const { id } = useParams();
   const navigate = useNavigate();
   const trip = getTrip(id);
+  const [copiedLink, setCopiedLink] = useState(false);
 
   if (!trip) {
     return (
       <div className="max-w-md mx-auto my-12 text-center">
         <h2 className="text-2xl font-bold text-gray-900">Trip Not Found</h2>
-        <p className="text-gray-500 mt-2">This shared trip link is invalid or has been deleted.</p>
+        <p className="text-gray-550 mt-2">This shared trip link is invalid or has been deleted.</p>
         <Link to="/" className="mt-6 inline-flex items-center px-4 py-2 text-white bg-primary-600 rounded-md">
           Go Back Home
         </Link>
@@ -42,29 +43,97 @@ export default function PublicTripView() {
     navigate('/trips');
   };
 
+  const shareUrl = window.location.href;
+  const twitterShare = `https://twitter.com/intent/tweet?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent('Check out my travel plan: ' + trip.name + ' via GlobeTrotter')}`;
+  const facebookShare = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`;
+  const whatsappShare = `https://api.whatsapp.com/send?text=${encodeURIComponent('Check out my travel plan: ' + trip.name + ' - ' + shareUrl)}`;
+
+  const handleNativeShare = () => {
+    if (navigator.share) {
+      navigator.share({
+        title: trip.name,
+        text: trip.description || 'Check out my GlobeTrotter itinerary!',
+        url: shareUrl
+      }).catch(err => console.log(err));
+    } else {
+      navigator.clipboard.writeText(shareUrl).then(() => {
+        setCopiedLink(true);
+        setTimeout(() => setCopiedLink(false), 2000);
+      });
+    }
+  };
+
   return (
     <div className="app-container py-8">
-      <div className="flex justify-between items-center mb-8 border-b border-gray-150 pb-4">
+      <div className="flex flex-col sm:flex-row justify-between items-center mb-8 border-b border-gray-150 pb-5 gap-4">
         <div className="flex items-center">
-          <Compass className="h-8 w-8 text-primary-600 mr-2" />
-          <span className="font-bold text-xl text-gray-900">GlobeTrotter Share</span>
+          <Compass className="h-9 w-9 text-primary-600 mr-2 shrink-0 animate-spin-slow" />
+          <span className="font-extrabold text-2xl text-gray-900 tracking-tight">GlobeTrotter Share</span>
         </div>
-        <button
-          onClick={handleCopyTrip}
-          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-semibold rounded-md shadow-sm text-white bg-primary-650 hover:bg-primary-700"
-        >
-          <Copy className="h-4 w-4 mr-2" /> Copy Trip to My Account
-        </button>
+        
+        {/* Social Sharing toolbar */}
+        <div className="flex items-center gap-3">
+          <span className="text-xs font-black text-gray-400 uppercase tracking-widest mr-1.5 hidden md:block">Share itinerary</span>
+          
+          <a
+            href={twitterShare}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-4 py-2 bg-gray-100 hover:bg-sky-50 text-gray-700 hover:text-sky-600 rounded-full transition-all border border-gray-200/50 text-xs font-black"
+            title="Share on Twitter / X"
+          >
+            Twitter
+          </a>
+          <a
+            href={facebookShare}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-4 py-2 bg-gray-100 hover:bg-blue-50 text-gray-700 hover:text-blue-600 rounded-full transition-all border border-gray-200/50 text-xs font-black"
+            title="Share on Facebook"
+          >
+            Facebook
+          </a>
+          <a
+            href={whatsappShare}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-4 py-2 bg-gray-100 hover:bg-emerald-50 text-gray-700 hover:text-emerald-600 rounded-full transition-all border border-gray-200/50 text-xs font-black flex items-center gap-1"
+            title="Share on WhatsApp"
+          >
+            <MessageCircle className="h-3.5 w-3.5" /> WhatsApp
+          </a>
+          
+          <button
+            onClick={handleNativeShare}
+            className="p-2 bg-gray-150 hover:bg-gray-200 text-gray-800 rounded-full transition-all"
+            title="Copy share link"
+          >
+            <Share2 className="h-4 w-4" />
+          </button>
+          
+          {copiedLink && (
+            <span className="text-xs font-bold text-emerald-600 animate-pulse bg-emerald-50 px-2.5 py-1 rounded-md">Copied!</span>
+          )}
+
+          <div className="h-6 w-px bg-gray-200 mx-2"></div>
+
+          <button
+            onClick={handleCopyTrip}
+            className="inline-flex items-center px-5 py-3 border border-transparent text-sm font-extrabold rounded-full shadow-md text-white bg-primary-600 hover:bg-primary-700"
+          >
+            <Copy className="h-4 w-4 mr-2" /> Copy Trip to My Account
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-8">
           <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6 md:p-8">
             <h1 className="text-3xl font-bold text-gray-900">{trip.name}</h1>
-            <p className="text-gray-500 mt-2 flex items-center text-sm font-medium">
+            <p className="text-gray-550 mt-2 flex items-center text-sm font-medium">
               <Calendar className="h-4 w-4 mr-2" /> {trip.start_date} to {trip.end_date}
             </p>
-            <p className="text-gray-600 mt-4 leading-relaxed">{trip.description}</p>
+            <p className="text-gray-655 mt-4 leading-relaxed">{trip.description}</p>
           </div>
 
           <h2 className="text-2xl font-bold text-gray-900">Shared Itinerary Stops</h2>
@@ -120,17 +189,17 @@ export default function PublicTripView() {
               <IndianRupee className="h-5 w-5 mr-1 text-primary-600" /> Budget Overview
             </h3>
             <div className="space-y-4">
-              <div className="flex justify-between py-2 border-b border-gray-50">
+              <div className="flex justify-between py-2 border-b border-gray-55">
                 <span className="text-gray-500 text-sm">Total Budget</span>
                 <span className="font-bold text-gray-900">₹{trip.budget.toLocaleString()}</span>
               </div>
-              <div className="flex justify-between py-2 border-b border-gray-50">
+              <div className="flex justify-between py-2 border-b border-gray-55">
                 <span className="text-gray-500 text-sm">Estimated Expense</span>
-                <span className="font-bold text-gray-950">₹{totalSpent.toLocaleString()}</span>
+                <span className="font-bold text-gray-955">₹{totalSpent.toLocaleString()}</span>
               </div>
               <div className="flex justify-between py-2">
                 <span className="text-gray-500 text-sm">Remaining</span>
-                <span className={`font-bold ${trip.budget - totalSpent < 0 ? 'text-red-650' : 'text-emerald-655'}`}>
+                <span className={`font-bold ${trip.budget - totalSpent < 0 ? 'text-red-655' : 'text-emerald-655'}`}>
                   ₹{(trip.budget - totalSpent).toLocaleString()}
                 </span>
               </div>
@@ -145,7 +214,7 @@ export default function PublicTripView() {
                 const pct = totalSpent > 0 ? (amt / totalSpent) * 100 : 0;
                 return (
                   <div key={cat} className="space-y-1">
-                    <div className="flex justify-between text-xs font-semibold text-gray-550">
+                    <div className="flex justify-between text-xs font-semibold text-gray-555">
                       <span>{cat}</span>
                       <span>₹{amt.toLocaleString()} ({pct.toFixed(0)}%)</span>
                     </div>

@@ -1,5 +1,6 @@
 const STORAGE_KEY = 'globetrotter_trips';
 const CITIES_STORAGE_KEY = 'globetrotter_cities';
+const USER_STORAGE_KEY = 'globetrotter_user';
 
 export const MASTER_CITIES = [
   { id: '10', name: 'Paris', country: 'France', region: 'Europe', cost_index: 3.5, popularity: 95, image_url: 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=400&auto=format&fit=crop&q=80' },
@@ -116,7 +117,6 @@ export function getTrips() {
   const upgraded = parsed.map(t => {
     let changed = false;
     
-    // Set default cover
     if (!t.cover_image) {
       changed = true;
       if (t.id === '1') t.cover_image = 'https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=600&auto=format&fit=crop&q=80';
@@ -124,14 +124,13 @@ export function getTrips() {
       else t.cover_image = 'https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=600&auto=format&fit=crop&q=80';
     }
     
-    // Set default stops structure
     if (t.stops && t.stops.length > 0 && typeof t.stops[0].city_id === 'undefined') {
       changed = true;
       t.stops = t.stops.map((s, idx) => {
         let matchedCity = MASTER_CITIES.find(c => c.name.toLowerCase() === s.city.toLowerCase());
         return {
           id: s.id,
-          city_id: matchedCity ? matchedCity.id : '10', // default to Paris
+          city_id: matchedCity ? matchedCity.id : '10',
           start_date: s.start_date,
           end_date: s.end_date,
           stop_order: idx + 1
@@ -139,7 +138,6 @@ export function getTrips() {
       });
     }
 
-    // Set default itinerary items
     if (typeof t.itinerary_items === 'undefined') {
       changed = true;
       t.itinerary_items = [];
@@ -203,4 +201,27 @@ export function deleteTrip(id) {
   const trips = getTrips();
   const filtered = trips.filter(t => t.id !== id);
   saveTrips(filtered);
+}
+
+// USER PROFILE PERSISTENCE
+export function getUserProfile() {
+  const data = localStorage.getItem(USER_STORAGE_KEY);
+  if (!data) {
+    const defaultUser = {
+      name: 'Zara Shukla',
+      email: 'zara.shukla@example.com',
+      joined: 'August 2026',
+      currency: 'INR (₹)',
+      language: 'English',
+      photo_url: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80',
+      saved_destinations: ['10', '30'] // Paris and Goa preset saved destination city IDs
+    };
+    localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(defaultUser));
+    return defaultUser;
+  }
+  return JSON.parse(data);
+}
+
+export function saveUserProfile(profile) {
+  localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(profile));
 }

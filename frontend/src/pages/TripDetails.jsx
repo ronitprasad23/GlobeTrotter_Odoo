@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { getTrip, updateTrip, getCities, addCity, MASTER_ACTIVITIES } from '../utils/storage';
 import { 
   Calendar as CalendarIcon, MapPin, IndianRupee, ArrowLeft, Plus, 
-  Trash2, Clipboard, ClipboardCheck, AlertTriangle, Info, Clock, CheckSquare,
+  Trash2, Edit2, Clipboard, ClipboardCheck, AlertTriangle, Info, Clock, CheckSquare,
   List, Calendar, HelpCircle, GripVertical, Search, X, Star, BarChart3, Tag, Compass
 } from 'lucide-react';
 
@@ -39,10 +39,12 @@ export default function TripDetails() {
 
   // Drag and Drop States
   const [draggedIndex, setDraggedIndex] = useState(null);
+  const [draggedActivityId, setDraggedActivityId] = useState(null);
 
   // Add Itinerary Item / Activity Search Form States
   const [selectedStopIdForActivity, setSelectedStopIdForActivity] = useState('');
   const [isActivityModalOpen, setIsActivityModalOpen] = useState(false);
+  const [editingActivityId, setEditingActivityId] = useState(null); // Set when editing activity
   const [activityDate, setActivityDate] = useState('');
   const [activitySource, setActivitySource] = useState('preset'); // 'preset' vs 'custom'
   const [activitySearchQuery, setActivitySearchQuery] = useState('');
@@ -104,6 +106,9 @@ export default function TripDetails() {
   const isOverBudget = totalSpent > trip.budget;
   const remaining = trip.budget - totalSpent;
 
+  // Daily budget calculations
+  const dailyBudgetLimit = diffDays > 0 ? trip.budget / diffDays : 0;
+
   const categories = ['Transport', 'Lodging', 'Food', 'Activities', 'Other'];
   const categoryTotals = categories.reduce((acc, cat) => {
     acc[cat] = trip.expenses ? trip.expenses.filter(e => e.category === cat).reduce((sum, e) => sum + e.amount, 0) : 0;
@@ -131,7 +136,7 @@ export default function TripDetails() {
     setIsStopModalOpen(false);
   };
 
-  // 2. NATIVE DRAG-AND-DROP HANDLERS
+  // 2. NATIVE DRAG-AND-DROP HANDLERS (Stops)
   const handleDragStart = (e, index) => {
     setDraggedIndex(index);
     e.dataTransfer.effectAllowed = 'move';
@@ -158,6 +163,39 @@ export default function TripDetails() {
 
     saveTripState({ ...trip, stops: updatedStops });
     setDraggedIndex(null);
+  };
+
+  // NATIVE DRAG-AND-DROP HANDLERS (Activities)
+  const handleActivityDragStart = (e, itemId) => {
+    setDraggedActivityId(itemId);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleActivityDrop = (e, targetItemId) => {
+    e.preventDefault();
+    if (!draggedActivityId || draggedActivityId === targetItemId) return;
+
+    const updatedItems = [...(trip.itinerary_items || [])];
+    const sourceIndex = updatedItems.findIndex(i => i.id === draggedActivityId);
+    const targetIndex = updatedItems.findIndex(i => i.id === targetItemId);
+    
+    if (sourceIndex === -1 || targetIndex === -1) return;
+
+    const [draggedItem] = updatedItems.splice(sourceIndex, 1);
+    updatedItems.splice(targetIndex, 0, draggedItem);
+
+    // Re-sequence sorting orders chronologically
+    const targetDate = draggedItem.date;
+    let counter = 1;
+    const finalItems = updatedItems.map(item => {
+      if (item.date === targetDate) {
+        return { ...item, sort_order: counter++ };
+      }
+      return item;
+    });
+
+    saveTripState({ ...trip, itinerary_items: finalItems });
+    setDraggedActivityId(null);
   };
 
   const handleDeleteStop = (stopId) => {
@@ -193,9 +231,10 @@ export default function TripDetails() {
     setIsAddingCity(false);
   };
 
-  // 4. ADD ITINERARY ITEM BY SELECTION
+  // 4. ADD / EDIT ITINERARY ITEM
   const handleOpenActivityModal = (stopId) => {
     setSelectedStopIdForActivity(stopId);
+    setEditingActivityId(null);
     const stop = trip.stops.find(s => s.id === stopId);
     if (stop) {
       setActivityDate(stop.start_date);
@@ -203,43 +242,108 @@ export default function TripDetails() {
     setIsActivityModalOpen(true);
   };
 
+  const handleOpenEditActivityModal = (item) => {
+    setSelectedStopIdForActivity(item.trip_stop_id);
+    setEditingActivityId(item.id);
+    setActivityDate(item.date);
+    setActivityStartTime(item.start_time);
+    setActivityEndTime(item.end_time);
+
+    const isPreset = MASTER_ACTIVITIES.some(a => a.id === item.activity_id && !a.id.startsWith('custom_'));
+    if (isPreset) {
+      setActivitySource('preset');
+      setSelectedActivityId(item.activity_id);
+    } else {
+      setActivitySource('custom');
+      const customAct = MASTER_ACTIVITIES.find(a => a.id === item.activity_id);
+      if (customAct) {
+        setCustomActivityName(customAct.name);
+        setCustomActivityType(customAct.activity_type);
+        setCustomActivityCost(String(customAct.estimated_cost));
+        setCustomActivityDuration(String(customAct.duration_minutes));
+      }
+    }
+    setIsActivityModalOpen(true);
+  };
+
   const handleAddActivityById = (actId, actName, actCost) => {
-    const newItem = {
-      id: Date.now().toString(),
-      trip_stop_id: selectedStopIdForActivity,
-      activity_id: actId,
-      date: activityDate,
-      start_time: activityStartTime,
-      end_time: activityEndTime,
-      sort_order: (trip.itinerary_items ? trip.itinerary_items.filter(item => item.date === activityDate).length : 0) + 1
-    };
+    if (editingActivityId) {
+      // Edit mode
+      const updatedItems = (trip.itinerary_items || []).map(item => {
+        if (item.id === editingActivityId) {
+          return {
+            ...item,
+            activity_id: actId,
+            date: activityDate,
+            start_time: activityStartTime,
+            end_time: activityEndTime
+          };
+        }
+        return item;
+      });
 
-    const updatedItems = [...(trip.itinerary_items || []), newItem];
-    
-    const newExpense = {
-      id: 'activity_exp_' + newItem.id,
-      trip_id: id,
-      trip_stop_id: selectedStopIdForActivity,
-      category: 'Activities',
-      description: actName,
-      amount: actCost,
-      expense_date: activityDate
-    };
-    
-    const updatedExpenses = [...(trip.expenses || []), newExpense];
+      const updatedExpenses = (trip.expenses || []).map(exp => {
+        if (exp.id === 'activity_exp_' + editingActivityId) {
+          return {
+            ...exp,
+            description: actName,
+            amount: actCost,
+            expense_date: activityDate
+          };
+        }
+        return exp;
+      });
 
-    saveTripState({ 
-      ...trip, 
-      itinerary_items: updatedItems,
-      expenses: updatedExpenses
-    });
+      saveTripState({
+        ...trip,
+        itinerary_items: updatedItems,
+        expenses: updatedExpenses
+      });
+      
+      setEditingActivityId(null);
+      setIsActivityModalOpen(false);
+    } else {
+      // Add mode
+      const newItem = {
+        id: Date.now().toString(),
+        trip_stop_id: selectedStopIdForActivity,
+        activity_id: actId,
+        date: activityDate,
+        start_time: activityStartTime,
+        end_time: activityEndTime,
+        sort_order: (trip.itinerary_items ? trip.itinerary_items.filter(item => item.date === activityDate).length : 0) + 1
+      };
 
-    setIsActivityModalOpen(false);
+      const updatedItems = [...(trip.itinerary_items || []), newItem];
+      
+      const newExpense = {
+        id: 'activity_exp_' + newItem.id,
+        trip_id: id,
+        trip_stop_id: selectedStopIdForActivity,
+        category: 'Activities',
+        description: actName,
+        amount: actCost,
+        expense_date: activityDate
+      };
+      
+      const updatedExpenses = [...(trip.expenses || []), newExpense];
+
+      saveTripState({ 
+        ...trip, 
+        itinerary_items: updatedItems,
+        expenses: updatedExpenses
+      });
+
+      setIsActivityModalOpen(false);
+    }
   };
 
   const handleAddCustomActivity = (e) => {
     e.preventDefault();
-    const newActId = 'custom_' + Date.now();
+    const newActId = editingActivityId 
+      ? trip.itinerary_items.find(i => i.id === editingActivityId)?.activity_id || 'custom_' + Date.now()
+      : 'custom_' + Date.now();
+      
     const newCustomAct = {
       id: newActId,
       city_id: trip.stops.find(s => s.id === selectedStopIdForActivity)?.city_id || '10',
@@ -250,7 +354,11 @@ export default function TripDetails() {
       estimated_cost: Number(customActivityCost),
       image_url: ''
     };
-    MASTER_ACTIVITIES.push(newCustomAct);
+    
+    // Push if it is a new custom activity
+    if (!editingActivityId) {
+      MASTER_ACTIVITIES.push(newCustomAct);
+    }
 
     handleAddActivityById(newActId, customActivityName, Number(customActivityCost));
 
@@ -274,7 +382,8 @@ export default function TripDetails() {
       id: Date.now().toString(),
       title: expenseTitle,
       amount: Number(expenseAmount),
-      category: expenseCategory
+      category: expenseCategory,
+      expense_date: trip.start_date // Default to first day
     };
 
     const updatedExpenses = [...(trip.expenses || []), newExpense];
@@ -301,7 +410,7 @@ export default function TripDetails() {
     saveTripState({ ...trip, isPublic: !trip.isPublic });
   };
 
-  // FILTER LOGIC FOR CITY SEARCH MODAL
+  // FILTER LOGIC FOR CITY SEARCH
   const filteredStopCities = citiesList.filter(c => {
     const matchesSearch = c.name.toLowerCase().includes(stopCitySearchQuery.toLowerCase()) || 
                           c.country.toLowerCase().includes(stopCitySearchQuery.toLowerCase()) ||
@@ -315,7 +424,7 @@ export default function TripDetails() {
     return matchesSearch && matchesRegion && matchesCost;
   });
 
-  // FILTER LOGIC FOR ACTIVITY SEARCH MODAL
+  // FILTER LOGIC FOR ACTIVITY SEARCH
   const currentStopCityId = trip.stops?.find(s => s.id === selectedStopIdForActivity)?.city_id;
   const filteredActivitiesForSearch = MASTER_ACTIVITIES.filter(act => {
     if (act.city_id !== currentStopCityId) return false;
@@ -329,6 +438,60 @@ export default function TripDetails() {
 
     return matchesSearch && matchesType && matchesCost;
   });
+
+  // Get daily spent alerts array
+  const dailySpentLogs = tripDateList.map(dateStr => {
+    const daySpent = (trip.expenses || [])
+      .filter(e => e.expense_date === dateStr || (!e.expense_date && dateStr === trip.start_date))
+      .reduce((sum, e) => sum + e.amount, 0);
+    return { date: dateStr, spent: daySpent, isOver: daySpent > dailyBudgetLimit };
+  });
+  const overbudgetDays = dailySpentLogs.filter(d => d.isOver);
+
+  // SVG Donut Chart Slices Generator
+  const getDonutSegments = () => {
+    let currentCircumferenceSum = 0;
+    const radius = 60;
+    const strokeWidth = 14;
+    const circumference = 2 * Math.PI * radius; // ~377
+    
+    const colors = {
+      Transport: '#3b82f6',
+      Lodging: '#6366f1',
+      Food: '#fb923c',
+      Activities: '#10b981',
+      Other: '#9ca3af'
+    };
+
+    if (totalSpent === 0) {
+      return [{
+        category: 'No Expenses',
+        pct: 100,
+        strokeDasharray: `${circumference}`,
+        strokeDashoffset: 0,
+        color: '#e5e7eb'
+      }];
+    }
+
+    return categories.map(cat => {
+      const amt = categoryTotals[cat];
+      const pct = (amt / totalSpent) * 100;
+      const strokeLength = (amt / totalSpent) * circumference;
+      const offset = circumference - strokeLength + currentCircumferenceSum;
+      
+      // Decrease offset sum sequentially
+      currentCircumferenceSum -= strokeLength;
+
+      return {
+        category: cat,
+        pct: pct,
+        strokeDasharray: `${circumference}`,
+        strokeDashoffset: offset,
+        color: colors[cat] || '#e5e7eb'
+      };
+    });
+  };
+  const donutSegments = getDonutSegments();
 
   return (
     <div className="w-full py-2">
@@ -352,7 +515,7 @@ export default function TripDetails() {
             </p>
           </div>
           <div className="flex gap-4 w-full md:w-auto">
-            <div className="bg-gradient-to-br from-primary-55 to-orange-55 rounded-xl p-5 border border-primary-100 flex items-center flex-1 md:flex-none md:min-w-[200px]">
+            <div className="bg-gradient-to-br from-primary-50 to-orange-50 rounded-xl p-5 border border-primary-100 flex items-center flex-1 md:flex-none md:min-w-[200px]">
               <IndianRupee className="h-10 w-10 text-primary-600 mr-4 shrink-0" />
               <div>
                 <span className="text-xs text-gray-400 font-black uppercase tracking-wider block">Estimated Budget</span>
@@ -378,8 +541,8 @@ export default function TripDetails() {
         <nav className="flex space-x-8">
           {[
             { id: 'builder', label: 'Itinerary Builder' },
-            { id: 'view', label: 'Itinerary View' },
-            { id: 'budget', label: 'Budget & Expenses' },
+            { id: 'view', label: 'Timeline & Calendar' }, // Calendar view tab title updated
+            { id: 'budget', label: 'Budget & Cost Breakdown' }, // Budget tab title updated
             { id: 'share', label: 'Share Trip' }
           ].map((tab) => (
             <button
@@ -405,7 +568,7 @@ export default function TripDetails() {
             <div className="flex justify-between items-center mb-4 gap-4">
               <div>
                 <h2 className="text-2xl font-black text-gray-900 tracking-tight">Configure Stops & Timeline</h2>
-                <p className="text-sm text-gray-400 mt-1 font-bold">💡 Drag stop cards vertically to rearrange city order</p>
+                <p className="text-sm text-gray-400 mt-1 font-bold">💡 Drag stop cards or activities vertically to reorder</p>
               </div>
               <button
                 onClick={() => setIsStopModalOpen(true)}
@@ -423,9 +586,9 @@ export default function TripDetails() {
               ) : (
                 trip.stops.map((stop, index) => {
                   const city = citiesList.find(c => c.id === stop.city_id);
-                  const stopActivities = trip.itinerary_items 
-                    ? trip.itinerary_items.filter(item => item.trip_stop_id === stop.id)
-                    : [];
+                  const stopActivities = (trip.itinerary_items || [])
+                    .filter(item => item.trip_stop_id === stop.id)
+                    .sort((a, b) => a.sort_order - b.sort_order);
 
                   return (
                     <div 
@@ -491,9 +654,19 @@ export default function TripDetails() {
                               {stopActivities.map((item) => {
                                 const actDetails = MASTER_ACTIVITIES.find(a => a.id === item.activity_id);
                                 return (
-                                  <div key={item.id} className="py-4 flex justify-between items-center gap-4">
+                                  <div 
+                                    key={item.id} 
+                                    draggable
+                                    onDragStart={(e) => handleActivityDragStart(e, item.id)}
+                                    onDragOver={(e) => e.preventDefault()}
+                                    onDrop={(e) => handleActivityDrop(e, item.id)}
+                                    className={`py-4 flex justify-between items-center gap-4 cursor-grab hover:bg-gray-50/50 p-2.5 rounded-lg border border-transparent hover:border-gray-150 transition-all ${
+                                      draggedActivityId === item.id ? 'opacity-30 bg-primary-50 border-primary-200' : ''
+                                    }`}
+                                  >
                                     <div className="flex items-start gap-4">
-                                      <span className="bg-primary-50 text-primary-600 text-sm font-black px-2.5 py-1 rounded mt-0.5 select-none shrink-0">
+                                      <span className="bg-primary-50 text-primary-600 text-sm font-black px-2.5 py-1 rounded mt-0.5 select-none shrink-0 flex items-center">
+                                        <GripVertical className="h-3 w-3 mr-1 text-primary-400 shrink-0" />
                                         {item.start_time}
                                       </span>
                                       <div>
@@ -507,12 +680,22 @@ export default function TripDetails() {
                                         </span>
                                       </div>
                                     </div>
-                                    <button
-                                      onClick={() => handleDeleteItineraryItem(item.id)}
-                                      className="text-gray-400 hover:text-red-655 p-1.5 hover:bg-red-50 rounded"
-                                    >
-                                      &times;
-                                    </button>
+                                    <div className="flex items-center gap-2">
+                                      <button
+                                        onClick={() => handleOpenEditActivityModal(item)}
+                                        className="text-gray-400 hover:text-primary-500 p-1.5 hover:bg-primary-50 rounded"
+                                        title="Quick Edit Activity"
+                                      >
+                                        <Edit2 className="h-4 w-4" />
+                                      </button>
+                                      <button
+                                        onClick={() => handleDeleteItineraryItem(item.id)}
+                                        className="text-gray-400 hover:text-red-655 p-1.5 hover:bg-red-50 rounded"
+                                        title="Delete Activity"
+                                      >
+                                        <Trash2 className="h-4 w-4" />
+                                      </button>
+                                    </div>
                                   </div>
                                 );
                               })}
@@ -555,15 +738,15 @@ export default function TripDetails() {
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 md:p-8">
               <h3 className="text-xl font-black text-gray-900 mb-4">Itinerary Summary</h3>
               <div className="space-y-4 text-base font-semibold">
-                <div className="flex justify-between py-2.5 border-b border-gray-50 text-gray-655">
+                <div className="flex justify-between py-2.5 border-b border-gray-55 text-gray-655">
                   <span>Planned Stops</span>
                   <span className="font-black text-gray-955">{trip.stops ? trip.stops.length : 0} Cities</span>
                 </div>
-                <div className="flex justify-between py-2.5 border-b border-gray-50 text-gray-655">
+                <div className="flex justify-between py-2.5 border-b border-gray-55 text-gray-655">
                   <span>Start Date</span>
                   <span className="font-black text-gray-955">{trip.start_date}</span>
                 </div>
-                <div className="flex justify-between py-2.5 border-b border-gray-50 text-gray-655">
+                <div className="flex justify-between py-2.5 border-b border-gray-55 text-gray-655">
                   <span>End Date</span>
                   <span className="font-black text-gray-955">{trip.end_date}</span>
                 </div>
@@ -577,7 +760,7 @@ export default function TripDetails() {
         </div>
       )}
 
-      {/* 2. ITINERARY VIEW */}
+      {/* 2. TIMELINE & CALENDAR VIEW */}
       {activeTab === 'view' && (
         <div className="space-y-6">
           {/* Header Controls */}
@@ -622,6 +805,9 @@ export default function TripDetails() {
                   .filter(item => item.date === dateStr)
                   .sort((a, b) => a.start_time.localeCompare(b.start_time));
 
+                // Find if this date is overbudget
+                const daySpentState = dailySpentLogs.find(d => d.date === dateStr);
+
                 return (
                   <div key={dateStr} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 md:p-8 hover:shadow-md transition-shadow">
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-gray-50 pb-4 mb-5 gap-2">
@@ -632,6 +818,13 @@ export default function TripDetails() {
                         <h3 className="font-extrabold text-lg text-gray-900">
                           {new Date(dateStr).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                         </h3>
+                        
+                        {/* Daily overbudget warning trigger */}
+                        {daySpentState && daySpentState.isOver && (
+                          <span className="bg-red-50 text-red-700 text-xs px-2.5 py-1 rounded-full font-black border border-red-100 flex items-center gap-1 animate-pulse">
+                            <AlertTriangle className="h-3.5 w-3.5" /> Over budget! Spent ₹{daySpentState.spent}
+                          </span>
+                        )}
                       </div>
                       
                       {cityCover && (
@@ -648,7 +841,7 @@ export default function TripDetails() {
                         {dayItems.map((item) => {
                           const act = MASTER_ACTIVITIES.find(a => a.id === item.activity_id);
                           return (
-                            <div key={item.id} className="flex flex-col sm:flex-row items-start gap-4 p-5 bg-gray-50/50 rounded-xl border border-gray-100/50 hover:bg-gray-50 transition-colors">
+                            <div key={item.id} className="flex flex-col sm:flex-row items-start gap-4 p-5 bg-gray-55/50 rounded-xl border border-gray-100/50 hover:bg-gray-50 transition-colors">
                               <div className="flex items-center gap-2 text-sm font-black text-gray-800 shrink-0">
                                 <Clock className="h-5 w-5 text-primary-500" />
                                 <span>{item.start_time} - {item.end_time}</span>
@@ -699,6 +892,7 @@ export default function TripDetails() {
                     const cityCover = stopCover ? citiesList.find(c => c.id === stopCover.city_id) : null;
                     const dayItems = (trip.itinerary_items || []).filter(item => item.date === dateStr);
                     const isSelected = selectedCalendarDate === dateStr;
+                    const daySpentState = dailySpentLogs.find(d => d.date === dateStr);
 
                     return (
                       <button
@@ -708,7 +902,7 @@ export default function TripDetails() {
                           isSelected
                             ? 'bg-primary-50/50 border-primary-500 shadow'
                             : 'bg-white border-gray-200 hover:border-gray-300'
-                        }`}
+                        } ${daySpentState?.isOver ? 'ring-2 ring-red-300' : ''}`}
                       >
                         <div className="flex justify-between items-start w-full">
                           <span className={`text-[10px] font-extrabold uppercase px-2.5 py-1 rounded-full ${
@@ -727,8 +921,9 @@ export default function TripDetails() {
                           </span>
                         )}
 
-                        <div className="mt-3 text-xs font-bold text-gray-455 block">
-                          {dayItems.length} {dayItems.length === 1 ? 'Activity' : 'Activities'}
+                        <div className="mt-3 text-xs font-bold text-gray-455 block flex justify-between w-full">
+                          <span>{dayItems.length} Act</span>
+                          {daySpentState?.isOver && <span className="text-red-650">⚠️</span>}
                         </div>
                       </button>
                     );
@@ -740,8 +935,13 @@ export default function TripDetails() {
                 <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 md:p-8">
                   {selectedCalendarDate ? (
                     <div>
-                      <h4 className="font-black text-xl text-gray-900 border-b border-gray-55 pb-2 mb-4">
-                        Schedule for {new Date(selectedCalendarDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      <h4 className="font-black text-xl text-gray-900 border-b border-gray-55 pb-2 mb-4 flex justify-between items-center">
+                        <span>{new Date(selectedCalendarDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                        {dailySpentLogs.find(d => d.date === selectedCalendarDate)?.isOver && (
+                          <span className="text-xs text-red-600 bg-red-50 border border-red-100 px-2.5 py-0.5 rounded font-black flex items-center gap-1">
+                            <AlertTriangle className="h-3 w-3" /> Over Daily Limit
+                          </span>
+                        )}
                       </h4>
                       
                       {(() => {
@@ -793,10 +993,11 @@ export default function TripDetails() {
         </div>
       )}
 
-      {/* 3. BUDGET & EXPENSES */}
+      {/* 3. BUDGET & COST BREAKDOWN */}
       {activeTab === 'budget' && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
           <div className="lg:col-span-2 space-y-6">
+            {/* Stats Row */}
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 grid grid-cols-3 gap-4 md:p-8">
               <div className="text-center border-r border-gray-100">
                 <span className="text-sm text-gray-400 font-bold uppercase tracking-wider block">Logged Expense</span>
@@ -816,9 +1017,31 @@ export default function TripDetails() {
               </div>
             </div>
 
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 md:p-8">
-              <h3 className="text-xl font-black text-gray-900 mb-6">Category Spending Breakdown</h3>
+            {/* Overbudget Days Alerts */}
+            {overbudgetDays.length > 0 && (
+              <div className="bg-red-50 border border-red-150 rounded-2xl p-6 space-y-3">
+                <h4 className="font-extrabold text-base text-red-700 flex items-center gap-1.5">
+                  <AlertTriangle className="h-5.5 w-5.5 text-red-655" /> Alerts: Overbudget Days Detected
+                </h4>
+                <p className="text-sm text-red-600 font-semibold leading-relaxed">
+                  The following travel days exceeded your calculated daily allowance limits (₹{Math.round(dailyBudgetLimit).toLocaleString()} / Day):
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
+                  {overbudgetDays.map(day => (
+                    <div key={day.date} className="bg-white/80 p-2.5 rounded-xl border border-red-200/50 flex justify-between text-xs font-bold text-gray-700">
+                      <span>{day.date}</span>
+                      <span className="text-red-655">Spent: ₹{day.spent.toLocaleString()}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Cost breakdown & Donut Chart Grid */}
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 md:p-8 grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+              {/* Left Bar Graph */}
               <div className="space-y-4">
+                <h3 className="text-xl font-black text-gray-900">Cost Split</h3>
                 {categories.map((cat) => {
                   const amt = categoryTotals[cat];
                   const pct = totalSpent > 0 ? (amt / totalSpent) * 100 : 0;
@@ -845,8 +1068,43 @@ export default function TripDetails() {
                   );
                 })}
               </div>
+
+              {/* Right SVGPie Chart */}
+              <div className="flex flex-col items-center justify-center p-4">
+                <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-4">Financial Breakdown Chart</h3>
+                
+                <div className="relative w-48 h-48">
+                  <svg className="w-full h-full transform -rotate-90" viewBox="0 0 160 160">
+                    {/* Outer background circle */}
+                    <circle cx="80" cy="80" r="60" fill="transparent" stroke="#f3f4f6" strokeWidth="14" />
+                    
+                    {/* Ring Segments */}
+                    {donutSegments.map((segment, index) => (
+                      <circle
+                        key={index}
+                        cx="80"
+                        cy="80"
+                        r="60"
+                        fill="transparent"
+                        stroke={segment.color}
+                        strokeWidth="14"
+                        strokeDasharray={segment.strokeDasharray}
+                        strokeDashoffset={segment.strokeDashoffset}
+                        className="transition-all duration-500"
+                      />
+                    ))}
+                  </svg>
+                  
+                  {/* Inner text content */}
+                  <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+                    <span className="text-[10px] text-gray-400 font-extrabold uppercase tracking-wider block">Total spent</span>
+                    <span className="text-lg font-black text-gray-900">₹{totalSpent.toLocaleString()}</span>
+                  </div>
+                </div>
+              </div>
             </div>
 
+            {/* Log list */}
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 md:p-8">
               <h3 className="text-xl font-black text-gray-900 mb-4">Logged Expense Details</h3>
               {(!trip.expenses || trip.expenses.length === 0) ? (
@@ -876,7 +1134,7 @@ export default function TripDetails() {
                               {exp.category}
                             </span>
                           </td>
-                          <td className="py-4 px-4 text-right font-black text-gray-955">₹{exp.amount.toLocaleString()}</td>
+                          <td className="py-4 px-4 text-right font-black text-gray-950">₹{exp.amount.toLocaleString()}</td>
                           <td className="py-4 px-4 text-center">
                             <button
                               onClick={() => handleDeleteExpense(exp.id)}
@@ -900,14 +1158,14 @@ export default function TripDetails() {
               <h3 className="text-xl font-black text-gray-955 mb-4">Log Expense</h3>
               <form onSubmit={handleAddExpense} className="space-y-4">
                 <div>
-                  <label className="block text-xs font-bold text-gray-450 uppercase tracking-wider mb-2">Expense Title</label>
+                  <label className="block text-xs font-bold text-gray-455 uppercase tracking-wider mb-2">Expense Title</label>
                   <input
                     type="text"
                     required
                     value={expenseTitle}
                     onChange={(e) => setExpenseTitle(e.target.value)}
                     placeholder="e.g. Flight to Paris, Resort deposit"
-                    className="w-full px-4 py-3 border border-gray-250 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 text-base bg-white"
+                    className="w-full px-4 py-3 border border-gray-250 rounded-lg focus:outline-none text-base bg-white"
                   />
                 </div>
                 <div>
@@ -918,7 +1176,7 @@ export default function TripDetails() {
                     value={expenseAmount}
                     onChange={(e) => setExpenseAmount(e.target.value)}
                     placeholder="5000"
-                    className="w-full px-4 py-3 border border-gray-255 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 text-base bg-white"
+                    className="w-full px-4 py-3 border border-gray-255 rounded-lg focus:outline-none text-base bg-white"
                   />
                 </div>
                 <div>
@@ -926,7 +1184,7 @@ export default function TripDetails() {
                   <select
                     value={expenseCategory}
                     onChange={(e) => setExpenseCategory(e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-255 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 text-base font-semibold"
+                    className="w-full px-4 py-3 border border-gray-255 rounded-lg bg-white focus:outline-none text-base font-semibold"
                   >
                     {categories.map((c) => (
                       <option key={c} value={c}>{c}</option>
@@ -1127,17 +1385,16 @@ export default function TripDetails() {
             <div className="flex justify-between items-center border-b border-gray-100 pb-3">
               <div>
                 <h3 className="text-2xl font-black text-gray-900 tracking-tight">Discover & Add Stop Cities</h3>
-                <p className="text-sm text-gray-500 mt-1">Search or filter destinations, select arrival/departure dates, and click "Add Stop".</p>
+                <p className="text-sm text-gray-555 mt-1">Search or filter destinations, select arrival/departure dates, and click "Add Stop".</p>
               </div>
               <button onClick={() => setIsStopModalOpen(false)} className="text-gray-400 hover:text-gray-600 text-2xl font-bold">
                 &times;
               </button>
             </div>
 
-            {/* Travel Stop Dates Selector */}
             <div className="bg-primary-50/50 p-5 rounded-2xl border border-primary-100/50 flex flex-col sm:flex-row items-center gap-4">
               <div className="flex-1 w-full">
-                <label className="block text-xs font-bold text-primary-800 uppercase tracking-wider mb-1.5">Stop Arrival Date</label>
+                <label className="block text-xs font-bold text-primary-850 uppercase tracking-wider mb-1.5">Stop Arrival Date</label>
                 <input
                   type="date"
                   value={stopStartDate}
@@ -1148,7 +1405,7 @@ export default function TripDetails() {
                 />
               </div>
               <div className="flex-1 w-full">
-                <label className="block text-xs font-bold text-primary-800 uppercase tracking-wider mb-1.5">Stop Departure Date</label>
+                <label className="block text-xs font-bold text-primary-850 uppercase tracking-wider mb-1.5">Stop Departure Date</label>
                 <input
                   type="date"
                   value={stopEndDate}
@@ -1160,7 +1417,6 @@ export default function TripDetails() {
               </div>
             </div>
 
-            {/* Search Filters Toolbar */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 border-b border-gray-100 pb-5">
               <div className="relative text-gray-700">
                 <span className="absolute inset-y-0 left-0 flex items-center pl-3.5">
@@ -1202,7 +1458,6 @@ export default function TripDetails() {
               </div>
             </div>
 
-            {/* SEARCH RESULTS CARDS GRID */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-h-96 overflow-y-auto pr-1">
               {filteredStopCities.length === 0 ? (
                 <div className="col-span-full py-12 text-center text-gray-400 italic text-base">
@@ -1267,18 +1522,20 @@ export default function TripDetails() {
         </div>
       )}
 
-      {/* SCHEDULE ACTIVITY / SEARCH CATALOG MODAL */}
+      {/* SCHEDULE/EDIT ACTIVITY MODAL */}
       {isActivityModalOpen && (
         <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 flex items-center justify-center p-4 backdrop-blur-xs">
           <div className="bg-white rounded-2xl shadow-xl border border-gray-100 w-full max-w-3xl p-6 space-y-6">
             <div className="flex justify-between items-center border-b border-gray-100 pb-3">
               <div>
-                <h3 className="text-2xl font-black text-gray-900 tracking-tight">Schedule stop Activities</h3>
-                <p className="text-sm text-gray-500 mt-1">Browse, filter, and add experiences or log custom activities for this stop.</p>
+                <h3 className="text-2xl font-black text-gray-900 tracking-tight">
+                  {editingActivityId ? 'Edit Scheduled Activity' : 'Schedule Stop Activities'}
+                </h3>
+                <p className="text-sm text-gray-555 mt-1">Browse, filter, and add experiences or log custom activities for this stop.</p>
               </div>
               <button
                 onClick={() => setIsActivityModalOpen(false)}
-                className="text-gray-400 hover:text-gray-600 text-2xl font-bold p-1"
+                className="text-gray-400 hover:text-gray-650 text-2xl font-bold p-1"
               >
                 &times;
               </button>
@@ -1406,12 +1663,12 @@ export default function TripDetails() {
                             </span>
                           </div>
                           
-                          <p className="text-xs text-gray-500 font-medium line-clamp-2 leading-relaxed mb-3">
+                          <p className="text-xs text-gray-555 font-medium line-clamp-2 leading-relaxed mb-3">
                             {act.description || 'Enjoy a scheduled excursion Stop city adventure.'}
                           </p>
                         </div>
 
-                        <div className="flex justify-between items-center border-t border-gray-50 pt-2.5 mt-1 text-xs text-gray-500 font-extrabold">
+                        <div className="flex justify-between items-center border-t border-gray-55 pt-2.5 mt-1 text-xs text-gray-500 font-extrabold">
                           <span className="flex items-center text-teal-650">
                             <Clock className="h-3.5 w-3.5 mr-1" /> {act.duration_minutes} mins
                           </span>
@@ -1424,7 +1681,7 @@ export default function TripDetails() {
                             onClick={() => handleAddActivityById(act.id, act.name, act.estimated_cost)}
                             className="py-1 px-3 bg-gradient-to-r from-primary-500 to-amber-500 hover:from-primary-600 text-white font-extrabold text-[10px] rounded-full shadow-xs"
                           >
-                            + Add Stop
+                            {editingActivityId ? '✔ Update Stop' : '+ Add Stop'}
                           </button>
                         </div>
                       </div>
@@ -1483,7 +1740,7 @@ export default function TripDetails() {
                     type="submit"
                     className="px-5 py-2.5 bg-gray-800 hover:bg-gray-900 text-white rounded-lg text-xs font-bold shadow"
                   >
-                    Log & Add Custom Activity
+                    {editingActivityId ? 'Update Custom Activity' : 'Log & Add Custom Activity'}
                   </button>
                 </div>
               </form>
