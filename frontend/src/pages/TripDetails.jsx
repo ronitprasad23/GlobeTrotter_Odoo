@@ -1381,7 +1381,7 @@ export default function TripDetails() {
       {/* SEARCH CITIES STOP MODAL */}
       {isStopModalOpen && (
         <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 flex items-center justify-center p-4 backdrop-blur-xs">
-          <div className="bg-white rounded-2xl shadow-xl border border-gray-100 w-full max-w-4xl p-6 space-y-6">
+          <div className="bg-white rounded-2xl shadow-xl border border-gray-100 w-full max-w-5xl p-8 space-y-8">
             <div className="flex justify-between items-center border-b border-gray-100 pb-3">
               <div>
                 <h3 className="text-2xl font-black text-gray-900 tracking-tight">Discover & Add Stop Cities</h3>
@@ -1458,7 +1458,7 @@ export default function TripDetails() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-h-96 overflow-y-auto pr-1">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-h-[500px] overflow-y-auto pr-1">
               {filteredStopCities.length === 0 ? (
                 <div className="col-span-full py-12 text-center text-gray-400 italic text-base">
                   No cities in our registry match your filters. Click "Add New City" at the bottom to register a custom city!
@@ -1525,7 +1525,7 @@ export default function TripDetails() {
       {/* SCHEDULE/EDIT ACTIVITY MODAL */}
       {isActivityModalOpen && (
         <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 flex items-center justify-center p-4 backdrop-blur-xs">
-          <div className="bg-white rounded-2xl shadow-xl border border-gray-100 w-full max-w-3xl p-6 space-y-6">
+          <div className="bg-white rounded-2xl shadow-xl border border-gray-100 w-full max-w-5xl p-8 space-y-8">
             <div className="flex justify-between items-center border-b border-gray-100 pb-3">
               <div>
                 <h3 className="text-2xl font-black text-gray-900 tracking-tight">
@@ -1647,7 +1647,7 @@ export default function TripDetails() {
                 </div>
 
                 {/* Catalog grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-60 overflow-y-auto pr-1">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-h-[460px] overflow-y-auto pr-1">
                   {filteredActivitiesForSearch.length === 0 ? (
                     <div className="col-span-full py-8 text-center text-gray-400 italic text-sm">
                       No activities match your filter in this city stop. Click "Log custom activity" tab above to write your own!
