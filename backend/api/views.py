@@ -133,7 +133,7 @@ def trips_list_create_view(request):
         serializer = TripsSerializer(trips, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
     elif request.method == 'POST':
-        serializer = TripsSerializer(data=request.data)
+        serializer = TripsSerializer(data=request.data, context={'request': request})
         if serializer.is_valid():
             serializer.save(user=request.user)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -151,7 +151,7 @@ def trips_detail_view(request, pk):
         serializer = TripsSerializer(trip)
         return Response(serializer.data, status=status.HTTP_200_OK)
     elif request.method == 'PUT':
-        serializer = TripsSerializer(trip, data=request.data, partial=True)
+        serializer = TripsSerializer(trip, data=request.data, partial=True, context={'request': request})
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_200_OK)

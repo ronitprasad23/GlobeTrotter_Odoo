@@ -34,6 +34,7 @@ export default function TripDetails() {
   const [expenseCategory, setExpenseCategory] = useState('Transport');
 
   const [copied, setCopied] = useState(false);
+  const [dbCities, setDbCities] = useState([]);
 
   const navigate = useNavigate();
   const auth = JSON.parse(localStorage.getItem('globetrotter_auth') || '{}');
@@ -44,7 +45,26 @@ export default function TripDetails() {
       return;
     }
     fetchTripDetails();
+    fetchCities();
   }, [id, auth.isLoggedIn, navigate]);
+
+  const fetchCities = () => {
+    fetch('http://127.0.0.1:8000/api/cities/', {
+      headers: {
+        'Authorization': `Bearer ${auth.token}`
+      }
+    })
+      .then(res => {
+        if (!res.ok) throw new Error('Failed to load cities');
+        return res.json();
+      })
+      .then(data => {
+        if (Array.isArray(data)) {
+          setDbCities(data);
+        }
+      })
+      .catch(err => console.error(err));
+  };
 
   const fetchTripDetails = () => {
     fetch(`http://127.0.0.1:8000/api/trips/${id}/`, {
@@ -206,8 +226,19 @@ export default function TripDetails() {
     saveTripState({ ...trip, isPublic: !trip.isPublic });
   };
 
+  const mergedCities = [...dbCities];
+  POPULAR_CITIES.forEach(pc => {
+    if (!mergedCities.some(c => c.name.toLowerCase() === pc.name.toLowerCase())) {
+      mergedCities.push({
+        name: pc.name,
+        country: pc.country,
+        activities: pc.activities || []
+      });
+    }
+  });
+
   const filteredCities = citySearch 
-    ? POPULAR_CITIES.filter(c => c.name.toLowerCase().includes(citySearch.toLowerCase())) 
+    ? mergedCities.filter(c => c.name.toLowerCase().includes(citySearch.toLowerCase())) 
     : [];
 
   return (
@@ -295,7 +326,7 @@ export default function TripDetails() {
                 </div>
               ) : (
                 trip.stops.map((stop, index) => {
-                  const isPresetCity = POPULAR_CITIES.find(c => c.name.toLowerCase() === stop.city.toLowerCase());
+                  const isPresetCity = mergedCities.find(c => c.name.toLowerCase() === stop.city.toLowerCase());
                   
                   return (
                     <div key={stop.id} className="relative flex gap-6 items-start">
@@ -358,7 +389,7 @@ export default function TripDetails() {
                               <span className="block text-[10px] font-extrabold text-gray-400 uppercase tracking-wider mb-2.5">
                                 Suggested Activities
                               </span>
-                              {isPresetCity ? (
+                              {isPresetCity && isPresetCity.activities && isPresetCity.activities.length > 0 ? (
                                 <div className="flex flex-col gap-1.5">
                                   {isPresetCity.activities.map((presetAct) => (
                                     <button
@@ -376,7 +407,7 @@ export default function TripDetails() {
                                   ))}
                                 </div>
                               ) : (
-                                <span className="text-xs text-gray-450 italic block">No presets for custom cities.</span>
+                                <span className="text-xs text-gray-450 italic block">No preset activities available.</span>
                               )}
                             </div>
 
@@ -699,7 +730,7 @@ export default function TripDetails() {
                   value={citySearch}
                   onChange={(e) => {
                     setCitySearch(e.target.value);
-                    const matched = POPULAR_CITIES.find(c => c.name.toLowerCase() === e.target.value.toLowerCase());
+                    const matched = mergedCities.find(c => c.name.toLowerCase() === e.target.value.toLowerCase());
                     setSelectedCityObj(matched || null);
                   }}
                   className="w-full px-3.5 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 text-sm bg-white"
