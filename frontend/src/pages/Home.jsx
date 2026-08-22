@@ -2,15 +2,13 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { getTrips, addTrip } from '../utils/storage';
 import { 
-  Compass, Plus, Calendar, MapPin, TrendingUp, DollarSign, Search, 
-  BarChart3, Users, LayoutDashboard, Database, ArrowRight, ShieldCheck
+  Compass, Plus, Calendar, MapPin, TrendingUp, DollarSign, Search
 } from 'lucide-react';
 
 export default function Home() {
   const navigate = useNavigate();
   const [trips, setTrips] = useState(getTrips());
   const [searchQuery, setSearchQuery] = useState('');
-  const [isAdminView, setIsAdminView] = useState(false);
 
   const totalTrips = trips.length;
   const totalBudget = trips.reduce((sum, t) => sum + Number(t.budget), 0);
@@ -26,7 +24,7 @@ export default function Home() {
   const popularCities = [
     { id: '20', name: 'Tokyo', country: 'Japan', cost: 'High', days: '5 Days', price: '₹85,000', cost_index: 4.0, image: 'https://images.unsplash.com/photo-1503899036084-c55cdd92da26?w=500&auto=format&fit=crop&q=60' },
     { id: '10', name: 'Paris', country: 'France', cost: 'High', days: '7 Days', price: '₹1,20,000', cost_index: 3.5, image: 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=500&auto=format&fit=crop&q=60' },
-    { id: '30', name: 'Goa', country: 'India', cost: 'Budget', days: '3 Days', price: '₹15,000', cost_index: 1.5, image: 'https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?w=500&auto=format&fit=crop&q=60' },
+    { id: '30', name: 'Goa', country: 'India', cost: 'Budget', days: '3 Days', price: '₹15,005', cost_index: 1.5, image: 'https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?w=500&auto=format&fit=crop&q=60' },
     { id: '40', name: 'Rome', country: 'Italy', cost: 'Medium', days: '6 Days', price: '₹95,000', cost_index: 3.0, image: 'https://images.unsplash.com/photo-1552832230-c0197dd311b5?w=500&auto=format&fit=crop&q=60' }
   ];
 
@@ -46,11 +44,12 @@ export default function Home() {
       imageUrl
     );
 
-    // Automatically prepopulate a stop for that city
+    // Prepopulate a stop for that city
+    const cityId = popularCities.find(c => c.name === cityName)?.id || '10';
     const updatedStops = [
       {
         id: Date.now().toString(),
-        city_id: popularCities.find(c => c.name === cityName)?.id || '10',
+        city_id: cityId,
         start_date: todayStr,
         end_date: returnDateStr,
         stop_order: 1
@@ -68,20 +67,6 @@ export default function Home() {
     setTrips(getTrips());
     navigate(`/trips/${newTrip.id}`);
   };
-
-  // ADMIN ANALYTICS MOCK DATA
-  const adminUsers = [
-    { name: 'Zara Shukla', email: 'zara.shukla@example.com', trips: 3, role: 'Traveler' },
-    { name: 'Ronit Prasad', email: 'ronit.prasad@example.com', trips: 5, role: 'Editor' },
-    { name: 'Akshar Travels', email: 'partner@akshartravels.com', trips: 14, role: 'Partner Admin' }
-  ];
-
-  const topDestinationsTable = [
-    { city: 'Tokyo, Japan', bookings: 124, revenue: '₹1,05,40,000', rating: '4.9 ⭐' },
-    { city: 'Paris, France', bookings: 98, revenue: '₹1,17,60,000', rating: '4.8 ⭐' },
-    { city: 'Goa, India', bookings: 210, revenue: '₹31,50,000', rating: '4.7 ⭐' },
-    { city: 'Rome, Italy', bookings: 64, revenue: '₹60,80,000', rating: '4.6 ⭐' }
-  ];
 
   return (
     <div className="bg-gray-50/50 min-h-screen pb-16">
@@ -102,7 +87,7 @@ export default function Home() {
           </p>
           
           {/* Quick Search Card Overlay */}
-          <div className="max-w-3xl mx-auto bg-white rounded-full shadow-lg p-2.5 flex items-center border border-gray-100 mt-10 text-gray-800">
+          <div className="max-w-3xl mx-auto bg-white rounded-full shadow-lg p-2.5 flex items-center border border-gray-105 mt-10 text-gray-800">
             <Search className="h-6 w-6 text-gray-400 ml-4 shrink-0" />
             <input
               type="text"
@@ -122,322 +107,156 @@ export default function Home() {
       </div>
 
       <div className="app-container -mt-12 relative z-10">
-        {/* Toggle between Traveler Dashboard and Admin Analytics */}
-        <div className="flex justify-between items-center mb-8 bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
-          <div className="flex items-center gap-2">
-            <LayoutDashboard className="h-5 w-5 text-primary-500" />
-            <span className="text-sm font-black text-gray-800 uppercase tracking-wider">
-              {isAdminView ? 'Admin Console' : 'Traveler Central'}
-            </span>
+        {/* Stats Row */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
+          <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-md flex items-center hover:translate-y-[-2px] transition-transform duration-200">
+            <div className="p-3 bg-primary-50 text-primary-500 rounded-xl mr-5">
+              <Compass className="h-7 w-7" />
+            </div>
+            <div>
+              <span className="text-xs text-gray-400 font-bold uppercase tracking-wider block">Trips Planned</span>
+              <span className="text-2xl font-black text-gray-800">{totalTrips} Trips</span>
+            </div>
           </div>
-
-          <button
-            onClick={() => setIsAdminView(!isAdminView)}
-            className={`px-5 py-2 rounded-full text-xs font-black border transition-all flex items-center gap-1.5 ${
-              isAdminView 
-                ? 'bg-primary-50 border-primary-200 text-primary-700 shadow-xs' 
-                : 'bg-gray-800 border-transparent text-white hover:bg-gray-900'
-            }`}
-          >
-            <ShieldCheck className="h-4 w-4" />
-            {isAdminView ? 'Switch to Traveler View' : 'Switch to Admin Analytics'}
-          </button>
+          <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-md flex items-center hover:translate-y-[-2px] transition-transform duration-200">
+            <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl mr-5">
+              <DollarSign className="h-7 w-7" />
+            </div>
+            <div>
+              <span className="text-xs text-gray-400 font-bold uppercase tracking-wider block">Estimated Budget</span>
+              <span className="text-2xl font-black text-gray-800">₹{totalBudget.toLocaleString()}</span>
+            </div>
+          </div>
+          <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-md flex items-center hover:translate-y-[-2px] transition-transform duration-200">
+            <div className="p-3 bg-amber-50 text-amber-600 rounded-xl mr-5">
+              <TrendingUp className="h-7 w-7" />
+            </div>
+            <div>
+              <span className="text-xs text-gray-400 font-bold uppercase tracking-wider block">Logged Expense</span>
+              <span className="text-2xl font-black text-gray-800">₹{totalSpent.toLocaleString()}</span>
+            </div>
+          </div>
         </div>
 
-        {/* 1. TRAVELER VIEW DASHBOARD */}
-        {!isAdminView && (
-          <>
-            {/* Stats Row */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
-              <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-md flex items-center hover:translate-y-[-2px] transition-transform duration-200">
-                <div className="p-3 bg-primary-50 text-primary-500 rounded-xl mr-5">
-                  <Compass className="h-7 w-7" />
-                </div>
-                <div>
-                  <span className="text-xs text-gray-400 font-bold uppercase tracking-wider block">Trips Planned</span>
-                  <span className="text-2xl font-black text-gray-800">{totalTrips} Trips</span>
-                </div>
-              </div>
-              <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-md flex items-center hover:translate-y-[-2px] transition-transform duration-200">
-                <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl mr-5">
-                  <DollarSign className="h-7 w-7" />
-                </div>
-                <div>
-                  <span className="text-xs text-gray-400 font-bold uppercase tracking-wider block">Estimated Budget</span>
-                  <span className="text-2xl font-black text-gray-800">₹{totalBudget.toLocaleString()}</span>
-                </div>
-              </div>
-              <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-md flex items-center hover:translate-y-[-2px] transition-transform duration-200">
-                <div className="p-3 bg-amber-50 text-amber-600 rounded-xl mr-5">
-                  <TrendingUp className="h-7 w-7" />
-                </div>
-                <div>
-                  <span className="text-xs text-gray-400 font-bold uppercase tracking-wider block">Logged Expense</span>
-                  <span className="text-2xl font-black text-gray-800">₹{totalSpent.toLocaleString()}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Recent Trips Section */}
-            <div className="mb-14">
-              <div className="flex justify-between items-end mb-6">
-                <div>
-                  <h2 className="text-3xl font-black text-gray-900 tracking-tight">Your Plan Dashboard</h2>
-                  <p className="text-sm text-gray-500 mt-1 font-semibold">Pick up planning where you left off</p>
-                </div>
-                <Link to="/trips" className="text-base font-bold text-primary-500 hover:text-primary-650 transition-colors mb-1">
-                  View all trips &rarr;
-                </Link>
-              </div>
-
-              {recentTrips.length === 0 ? (
-                <div className="bg-white rounded-2xl border border-gray-100 p-16 text-center shadow-sm">
-                  <Compass className="h-14 w-14 text-gray-300 mx-auto mb-3" />
-                  <p className="text-gray-500 font-bold text-lg">No active trips match your search.</p>
-                  <Link 
-                    to="/trips/create" 
-                    className="mt-4 inline-flex items-center px-6 py-3 border border-transparent text-sm font-bold rounded-full text-white bg-primary-500 hover:bg-primary-600 shadow"
-                  >
-                    Plan a New Trip
-                  </Link>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  {recentTrips.map((trip) => {
-                    const spent = trip.expenses ? trip.expenses.reduce((sum, e) => sum + e.amount, 0) : 0;
-                    const stopsCount = trip.stops ? trip.stops.length : 0;
-                    const pct = trip.budget > 0 ? Math.min((spent / trip.budget) * 100, 100) : 0;
-
-                    return (
-                      <div key={trip.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col justify-between hover:shadow-md transition-shadow">
-                        <div className="p-6 md:p-8">
-                          <div className="flex justify-between items-start mb-4">
-                            <h3 className="text-2xl font-bold text-gray-900 line-clamp-1">{trip.name}</h3>
-                            <span className="bg-emerald-50 text-emerald-700 text-xs px-3 py-1 rounded-full font-black">
-                              Active
-                            </span>
-                          </div>
-                          <div className="space-y-2 text-sm text-gray-500 mb-5">
-                            <div className="flex items-center font-bold">
-                              <Calendar className="h-4.5 w-4.5 mr-2 text-primary-500 shrink-0" />
-                              {trip.start_date} to {trip.end_date}
-                            </div>
-                            <div className="flex items-center font-bold">
-                              <MapPin className="h-4.5 w-4.5 mr-2 text-teal-650 shrink-0" />
-                              {stopsCount} Stop{stopsCount !== 1 && 's'} Planned
-                            </div>
-                          </div>
-                          <div className="w-full bg-gray-100 rounded-full h-2.5 mb-3">
-                            <div 
-                              className={`h-2.5 rounded-full ${spent > trip.budget ? 'bg-red-655' : 'bg-primary-500'}`}
-                              style={{ width: `${pct}%` }}
-                            ></div>
-                          </div>
-                          <div className="flex justify-between text-xs text-gray-500 font-extrabold">
-                            <span>Spent: ₹{spent.toLocaleString()}</span>
-                            <span>Budget: ₹{trip.budget.toLocaleString()}</span>
-                          </div>
-                        </div>
-                        <div className="bg-gray-50 px-6 md:px-8 py-4 border-t border-gray-100 flex justify-end">
-                          <Link to={`/trips/${trip.id}`} className="text-sm font-black text-primary-500 hover:text-primary-650">
-                            Customize Itinerary &rarr;
-                          </Link>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-
-            {/* Popular Destinations Grid */}
+        {/* Recent Trips Section */}
+        <div className="mb-14">
+          <div className="flex justify-between items-end mb-6">
             <div>
-              <div className="mb-8">
-                <h2 className="text-3xl font-black text-gray-900 tracking-tight">Explore Recommended Destinations</h2>
-                <p className="text-sm text-gray-550 mt-1 font-semibold">One-click planning helper packages to launch instantly</p>
-              </div>
-              
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-                {popularCities.map((city) => (
-                  <div key={city.name} className="group bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100 hover:shadow-md transition-shadow flex flex-col justify-between">
-                    <div>
-                      <div className="h-48 overflow-hidden relative">
-                        <img 
-                          src={city.image} 
-                          alt={city.name} 
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-350"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-60"></div>
-                        <span className="absolute top-3 left-3 bg-white/95 backdrop-blur-sm text-gray-800 text-[10px] uppercase tracking-wider font-black px-2.5 py-1 rounded-full shadow-sm">
-                          {city.cost} Cost
-                        </span>
-                        <span className="absolute bottom-3 right-3 bg-primary-500 text-white text-xs font-black px-3 py-1 rounded-full shadow">
-                          {city.price}
-                        </span>
-                      </div>
-                      <div className="p-5">
-                        <div className="flex justify-between items-center gap-2">
-                          <h4 className="font-bold text-gray-900 text-lg line-clamp-1">{city.name}</h4>
-                          <span className="text-xs text-gray-400 font-bold shrink-0">{city.days}</span>
-                        </div>
-                        <p className="text-gray-500 text-sm mt-1 font-semibold">{city.country}</p>
-                      </div>
-                    </div>
-                    
-                    {/* Instant Planner Quick Action */}
-                    <div className="p-4 pt-0">
-                      <button
-                        onClick={() => handleQuickPlan(city.name, city.country, city.cost_index, city.image)}
-                        className="w-full py-2 bg-primary-50 hover:bg-primary-100 text-primary-700 font-extrabold text-xs rounded-xl flex items-center justify-center gap-1 transition-colors border border-primary-100/50"
-                      >
-                        <Compass className="h-3.5 w-3.5" /> Quick Plan Trip
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <h2 className="text-3xl font-black text-gray-900 tracking-tight">Your Plan Dashboard</h2>
+              <p className="text-sm text-gray-500 mt-1 font-semibold">Pick up planning where you left off</p>
             </div>
-          </>
-        )}
-
-        {/* 2. ADMIN / ANALYTICS VIEW */}
-        {isAdminView && (
-          <div className="space-y-8 animate-fade-in">
-            {/* Top Admin Info row */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 grid grid-cols-1 sm:grid-cols-4 gap-6">
-              <div className="border-r border-gray-100/80 pr-4">
-                <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">App Adoption Rate</span>
-                <span className="text-2xl font-black text-gray-800 block mt-1">94.2%</span>
-                <span className="text-xs text-emerald-600 font-bold block mt-1">▲ 3.8% MoM Growth</span>
-              </div>
-              <div className="border-r border-gray-100/80 px-4">
-                <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">Active Travelers</span>
-                <span className="text-2xl font-black text-gray-800 block mt-1">324 users</span>
-                <span className="text-xs text-emerald-600 font-bold block mt-1">▲ 12.4% Weekly Active</span>
-              </div>
-              <div className="border-r border-gray-100/80 px-4">
-                <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">Avg Spent / Trip</span>
-                <span className="text-2xl font-black text-gray-800 block mt-1">₹58,400</span>
-                <span className="text-xs text-amber-600 font-bold block mt-1">● Budget compliant</span>
-              </div>
-              <div className="pl-4">
-                <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">Shared Link Views</span>
-                <span className="text-2xl font-black text-gray-800 block mt-1">1,402 views</span>
-                <span className="text-xs text-emerald-600 font-bold block mt-1">▲ 18.5% Virality rate</span>
-              </div>
-            </div>
-
-            {/* Growth Chart & Metrics */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-              {/* Vertical SVG Growth bar chart */}
-              <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-100 shadow-sm p-6 md:p-8">
-                <h3 className="text-lg font-black text-gray-900 mb-6 flex items-center">
-                  <BarChart3 className="h-5 w-5 mr-1.5 text-primary-500" /> Trips Creation Trends (Monthly Growth)
-                </h3>
-                
-                <div className="flex items-end justify-between h-48 border-b border-gray-200 pb-2 px-6">
-                  {/* May */}
-                  <div className="flex flex-col items-center gap-2 w-16">
-                    <span className="text-xs text-gray-400 font-bold">12</span>
-                    <div className="bg-gray-200 w-10 h-10 rounded-t-md hover:bg-gray-300 transition-colors"></div>
-                    <span className="text-xs font-bold text-gray-500">May</span>
-                  </div>
-                  {/* Jun */}
-                  <div className="flex flex-col items-center gap-2 w-16">
-                    <span className="text-xs text-gray-400 font-bold">34</span>
-                    <div className="bg-primary-300 w-10 h-24 rounded-t-md hover:bg-primary-400 transition-colors"></div>
-                    <span className="text-xs font-bold text-gray-500">Jun</span>
-                  </div>
-                  {/* Jul */}
-                  <div className="flex flex-col items-center gap-2 w-16">
-                    <span className="text-xs text-gray-400 font-bold">58</span>
-                    <div className="bg-primary-400 w-10 h-36 rounded-t-md hover:bg-primary-500 transition-colors"></div>
-                    <span className="text-xs font-bold text-gray-500">Jul</span>
-                  </div>
-                  {/* Aug */}
-                  <div className="flex flex-col items-center gap-2 w-16">
-                    <span className="text-xs text-emerald-600 font-black">92</span>
-                    <div className="bg-primary-500 w-10 h-44 rounded-t-md hover:bg-primary-600 transition-colors"></div>
-                    <span className="text-xs font-bold text-gray-500">Aug</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Top Cities Statistics */}
-              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 md:p-8">
-                <h3 className="text-lg font-black text-gray-900 mb-6 flex items-center">
-                  <Database className="h-5 w-5 mr-1.5 text-primary-500" /> Platform Insights
-                </h3>
-                
-                <div className="space-y-4 text-xs font-bold text-gray-600">
-                  <div className="bg-gray-50 p-3 rounded-xl flex justify-between items-center">
-                    <span>Active Stops Registered</span>
-                    <span className="text-sm font-black text-gray-900">42 Stops</span>
-                  </div>
-                  <div className="bg-gray-50 p-3 rounded-xl flex justify-between items-center">
-                    <span>Popular Stops Category</span>
-                    <span className="text-sm font-black text-gray-900 text-teal-650">Culture Excursions</span>
-                  </div>
-                  <div className="bg-gray-50 p-3 rounded-xl flex justify-between items-center">
-                    <span>Estimated Cost Logged</span>
-                    <span className="text-sm font-black text-gray-900">₹3,42,000</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Data Tables */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              {/* Top Bookings Table */}
-              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 md:p-8">
-                <h3 className="text-lg font-black text-gray-900 mb-4">Top Visited Destinations</h3>
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-100 text-left text-xs">
-                    <thead>
-                      <tr className="text-gray-400 font-black">
-                        <th className="py-2.5 pb-3">Destination</th>
-                        <th className="py-2.5 pb-3 text-center">Active Bookings</th>
-                        <th className="py-2.5 pb-3 text-right">Revenue Yield</th>
-                        <th className="py-2.5 pb-3 text-center">User Rating</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-50 font-bold text-gray-700">
-                      {topDestinationsTable.map((row) => (
-                        <tr key={row.city} className="hover:bg-gray-50/50">
-                          <td className="py-3 font-extrabold text-gray-900">{row.city}</td>
-                          <td className="py-3 text-center">{row.bookings}</td>
-                          <td className="py-3 text-right text-gray-900">{row.revenue}</td>
-                          <td className="py-3 text-center">{row.rating}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              {/* User management tools */}
-              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 md:p-8">
-                <h3 className="text-lg font-black text-gray-900 mb-4 flex items-center">
-                  <Users className="h-5 w-5 mr-1.5 text-primary-500" /> User Engagement Accounts
-                </h3>
-                <div className="divide-y divide-gray-100 text-xs font-bold text-gray-650">
-                  {adminUsers.map((user) => (
-                    <div key={user.email} className="py-3.5 flex justify-between items-center hover:bg-gray-55/30 px-2 rounded-lg">
-                      <div>
-                        <span className="font-extrabold text-sm text-gray-900 block">{user.name}</span>
-                        <span className="text-[10px] text-gray-400 mt-0.5 block">{user.email}</span>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <span className="bg-gray-100 px-3 py-1 rounded text-[10px] font-black uppercase text-gray-500">{user.role}</span>
-                        <span className="text-gray-900 font-extrabold">{user.trips} Trips</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
+            <Link to="/trips" className="text-base font-bold text-primary-500 hover:text-primary-650 transition-colors mb-1">
+              View all trips &rarr;
+            </Link>
           </div>
-        )}
+
+          {recentTrips.length === 0 ? (
+            <div className="bg-white rounded-2xl border border-gray-105 p-16 text-center shadow-sm">
+              <Compass className="h-14 w-14 text-gray-300 mx-auto mb-3" />
+              <p className="text-gray-555 font-bold text-lg">No active trips match your search.</p>
+              <Link 
+                to="/trips/create" 
+                className="mt-4 inline-flex items-center px-6 py-3 border border-transparent text-sm font-bold rounded-full text-white bg-primary-500 hover:bg-primary-600 shadow"
+              >
+                Plan a New Trip
+              </Link>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {recentTrips.map((trip) => {
+                const spent = trip.expenses ? trip.expenses.reduce((sum, e) => sum + e.amount, 0) : 0;
+                const stopsCount = trip.stops ? trip.stops.length : 0;
+                const pct = trip.budget > 0 ? Math.min((spent / trip.budget) * 100, 100) : 0;
+
+                return (
+                  <div key={trip.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col justify-between hover:shadow-md transition-shadow">
+                    <div className="p-6 md:p-8">
+                      <div className="flex justify-between items-start mb-4">
+                        <h3 className="text-2xl font-bold text-gray-900 line-clamp-1">{trip.name}</h3>
+                        <span className="bg-emerald-50 text-emerald-700 text-xs px-3 py-1 rounded-full font-black">
+                          Active
+                        </span>
+                      </div>
+                      <div className="space-y-2 text-sm text-gray-500 mb-5">
+                        <div className="flex items-center font-bold">
+                          <Calendar className="h-4.5 w-4.5 mr-2 text-primary-500 shrink-0" />
+                          {trip.start_date} to {trip.end_date}
+                        </div>
+                        <div className="flex items-center font-bold">
+                          <MapPin className="h-4.5 w-4.5 mr-2 text-teal-650 shrink-0" />
+                          {stopsCount} Stop{stopsCount !== 1 && 's'} Planned
+                        </div>
+                      </div>
+                      <div className="w-full bg-gray-100 rounded-full h-2.5 mb-3">
+                        <div 
+                          className={`h-2.5 rounded-full ${spent > trip.budget ? 'bg-red-655' : 'bg-primary-500'}`}
+                          style={{ width: `${pct}%` }}
+                        ></div>
+                      </div>
+                      <div className="flex justify-between text-xs text-gray-500 font-extrabold">
+                        <span>Spent: ₹{spent.toLocaleString()}</span>
+                        <span>Budget: ₹{trip.budget.toLocaleString()}</span>
+                      </div>
+                    </div>
+                    <div className="bg-gray-50 px-6 md:px-8 py-4 border-t border-gray-100 flex justify-end">
+                      <Link to={`/trips/${trip.id}`} className="text-sm font-black text-primary-500 hover:text-primary-650">
+                        Customize Itinerary &rarr;
+                      </Link>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Popular Destinations Grid */}
+        <div>
+          <div className="mb-8">
+            <h2 className="text-3xl font-black text-gray-900 tracking-tight">Explore Recommended Destinations</h2>
+            <p className="text-sm text-gray-550 mt-1 font-semibold">One-click planning helper packages to launch instantly</p>
+          </div>
+          
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+            {popularCities.map((city) => (
+              <div key={city.name} className="group bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100 hover:shadow-md transition-shadow flex flex-col justify-between">
+                <div>
+                  <div className="h-48 overflow-hidden relative">
+                    <img 
+                      src={city.image} 
+                      alt={city.name} 
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-350"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-60"></div>
+                    <span className="absolute top-3 left-3 bg-white/95 backdrop-blur-sm text-gray-800 text-[10px] uppercase tracking-wider font-black px-2.5 py-1 rounded-full shadow-sm">
+                      {city.cost} Cost
+                    </span>
+                    <span className="absolute bottom-3 right-3 bg-primary-500 text-white text-xs font-black px-3 py-1 rounded-full shadow">
+                      {city.price}
+                    </span>
+                  </div>
+                  <div className="p-5">
+                    <div className="flex justify-between items-center gap-2">
+                      <h4 className="font-bold text-gray-900 text-lg line-clamp-1">{city.name}</h4>
+                      <span className="text-xs text-gray-400 font-bold shrink-0">{city.days}</span>
+                    </div>
+                    <p className="text-gray-500 text-sm mt-1 font-semibold">{city.country}</p>
+                  </div>
+                </div>
+                
+                {/* Instant Planner Quick Action */}
+                <div className="p-4 pt-0">
+                  <button
+                    onClick={() => handleQuickPlan(city.name, city.country, city.cost_index, city.image)}
+                    className="w-full py-2 bg-primary-50 hover:bg-primary-100 text-primary-700 font-extrabold text-xs rounded-xl flex items-center justify-center gap-1 transition-colors border border-primary-100/50"
+                  >
+                    <Compass className="h-3.5 w-3.5" /> Quick Plan Trip
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );
