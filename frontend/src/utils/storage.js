@@ -1,4 +1,5 @@
 const STORAGE_KEY = 'globetrotter_trips';
+const CITIES_STORAGE_KEY = 'globetrotter_cities';
 
 export const MASTER_CITIES = [
   { id: '10', name: 'Paris', country: 'France', region: 'Europe', cost_index: 3.5, popularity: 95, image_url: 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=400&auto=format&fit=crop&q=80' },
@@ -72,6 +73,35 @@ const defaultTrips = [
     ]
   }
 ];
+
+export function getCities() {
+  const data = localStorage.getItem(CITIES_STORAGE_KEY);
+  if (!data) {
+    localStorage.setItem(CITIES_STORAGE_KEY, JSON.stringify(MASTER_CITIES));
+    return MASTER_CITIES;
+  }
+  return JSON.parse(data);
+}
+
+export function saveCities(cities) {
+  localStorage.setItem(CITIES_STORAGE_KEY, JSON.stringify(cities));
+}
+
+export function addCity(name, country, region = '', cost_index = 2.0, popularity = 80, image_url = '') {
+  const cities = getCities();
+  const newCity = {
+    id: Date.now().toString(),
+    name,
+    country,
+    region,
+    cost_index: Number(cost_index),
+    popularity: Number(popularity),
+    image_url: image_url || 'https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=400&auto=format&fit=crop&q=80'
+  };
+  cities.push(newCity);
+  saveCities(cities);
+  return newCity;
+}
 
 export function getTrips() {
   const data = localStorage.getItem(STORAGE_KEY);

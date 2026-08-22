@@ -1,15 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { getTrip, updateTrip, MASTER_CITIES, MASTER_ACTIVITIES } from '../utils/storage';
+import { getTrip, updateTrip, getCities, addCity, MASTER_ACTIVITIES } from '../utils/storage';
 import { 
   Calendar as CalendarIcon, MapPin, IndianRupee, ArrowLeft, Plus, 
   Trash2, Clipboard, ClipboardCheck, AlertTriangle, Info, Clock, CheckSquare,
-  ArrowUp, ArrowDown, List, Calendar, HelpCircle
+  ArrowUp, ArrowDown, List, Calendar, HelpCircle, GripVertical, Search, X, Star, BarChart3
 } from 'lucide-react';
 
 export default function TripDetails() {
   const { id } = useParams();
   const [trip, setTrip] = useState(null);
+  const [citiesList, setCitiesList] = useState([]);
   
   // Navigation tabs: 'builder', 'view', 'budget', 'share'
   const [activeTab, setActiveTab] = useState('builder');
@@ -17,11 +18,25 @@ export default function TripDetails() {
   const [viewMode, setViewMode] = useState('list');
   const [selectedCalendarDate, setSelectedCalendarDate] = useState(null);
 
+  // Manage Cities Modal States
+  const [isCityModalOpen, setIsCityModalOpen] = useState(false);
+  const [citySearchQuery, setCitySearchQuery] = useState('');
+  const [isAddingCity, setIsAddingCity] = useState(false);
+  const [newCityName, setNewCityName] = useState('');
+  const [newCityCountry, setNewCityCountry] = useState('');
+  const [newCityRegion, setNewCityRegion] = useState('');
+  const [newCityCost, setNewCityCost] = useState('2.0');
+  const [newCityPopularity, setNewCityPopularity] = useState('80');
+  const [newCityImageUrl, setNewCityImageUrl] = useState('');
+
   // Add Stop Modal States
   const [isStopModalOpen, setIsStopModalOpen] = useState(false);
-  const [selectedCityId, setSelectedCityId] = useState(MASTER_CITIES[0].id);
+  const [selectedCityId, setSelectedCityId] = useState('');
   const [stopStartDate, setStopStartDate] = useState('');
   const [stopEndDate, setStopEndDate] = useState('');
+
+  // Drag and Drop States
+  const [draggedIndex, setDraggedIndex] = useState(null);
 
   // Add Itinerary Item Form States
   const [selectedStopIdForActivity, setSelectedStopIdForActivity] = useState('');
@@ -50,6 +65,11 @@ export default function TripDetails() {
         setActivityDate(loadedTrip.start_date);
         setSelectedCalendarDate(loadedTrip.start_date);
       }
+    }
+    const currentCities = getCities();
+    setCitiesList(currentCities);
+    if (currentCities.length > 0) {
+      setSelectedCityId(currentCities[0].id);
     }
   }, [id]);
 
@@ -119,34 +139,74 @@ export default function TripDetails() {
     setStopEndDate('');
   };
 
-  // 2. REORDER STOPS (Up/Down)
-  const moveStop = (index, direction) => {
+  // 2. NATIVE DRAG-AND-DROP HANDLERS
+  const handleDragStart = (e, index) => {
+    setDraggedIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e, index) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = (e, targetIndex) => {
+    e.preventDefault();
+    if (draggedIndex === null || draggedIndex === targetIndex) return;
+
     const newStops = [...(trip.stops || [])];
-    const targetIndex = direction === 'up' ? index - 1 : index + 1;
-    if (targetIndex < 0 || targetIndex >= newStops.length) return;
+    const draggedStop = newStops[draggedIndex];
 
-    // Swap stop orders
-    const tempOrder = newStops[index].stop_order;
-    newStops[index].stop_order = newStops[targetIndex].stop_order;
-    newStops[targetIndex].stop_order = tempOrder;
+    // Remove from old index and insert into target index
+    newStops.splice(draggedIndex, 1);
+    newStops.splice(targetIndex, 0, draggedStop);
 
-    // Re-sort
-    newStops.sort((a, b) => a.stop_order - b.stop_order);
-    saveTripState({ ...trip, stops: newStops });
+    // Re-map stop orders sequentially
+    const updatedStops = newStops.map((stop, idx) => ({
+      ...stop,
+      stop_order: idx + 1
+    }));
+
+    saveTripState({ ...trip, stops: updatedStops });
+    setDraggedIndex(null);
   };
 
   const handleDeleteStop = (stopId) => {
     const remainingStops = (trip.stops || []).filter(s => s.id !== stopId);
-    // Reset orders
     const resetStops = remainingStops.map((s, idx) => ({ ...s, stop_order: idx + 1 }));
-    
-    // Filter itinerary items belonging to this deleted stop
     const remainingItems = (trip.itinerary_items || []).filter(item => item.trip_stop_id !== stopId);
     
     saveTripState({ ...trip, stops: resetStops, itinerary_items: remainingItems });
   };
 
-  // 3. ADD ITINERARY ITEM
+  // 3. DYNAMIC CITY CREATION
+  const handleAddCity = (e) => {
+    e.preventDefault();
+    if (!newCityName || !newCityCountry) return;
+
+    const added = addCity(
+      newCityName,
+      newCityCountry,
+      newCityRegion,
+      newCityCost,
+      newCityPopularity,
+      newCityImageUrl
+    );
+
+    const freshCitiesList = getCities();
+    setCitiesList(freshCitiesList);
+    setSelectedCityId(added.id);
+
+    // Reset Form
+    setNewCityName('');
+    setNewCityCountry('');
+    setNewCityRegion('');
+    setNewCityCost('2.0');
+    setNewCityPopularity('80');
+    setNewCityImageUrl('');
+    setIsAddingCity(false);
+  };
+
+  // 4. ADD ITINERARY ITEM
   const handleOpenActivityModal = (stopId) => {
     setSelectedStopIdForActivity(stopId);
     const stop = trip.stops.find(s => s.id === stopId);
@@ -168,7 +228,6 @@ export default function TripDetails() {
       const act = MASTER_ACTIVITIES.find(a => a.id === selectedActivityId);
       if (act) finalEstCost = act.estimated_cost;
     } else {
-      // Create a dynamic activity and save to master array simulation (local storage mock)
       const newActId = 'custom_' + Date.now();
       const newCustomAct = {
         id: newActId,
@@ -180,7 +239,7 @@ export default function TripDetails() {
         estimated_cost: Number(customActivityCost),
         image_url: ''
       };
-      MASTER_ACTIVITIES.push(newCustomAct); // Append in memory
+      MASTER_ACTIVITIES.push(newCustomAct);
       activityIdToSave = newActId;
       finalEstCost = Number(customActivityCost);
     }
@@ -197,7 +256,6 @@ export default function TripDetails() {
 
     const updatedItems = [...(trip.itinerary_items || []), newItem];
     
-    // Automatically log this as an expense under 'Activities'
     const newExpense = {
       id: 'activity_exp_' + newItem.id,
       trip_id: id,
@@ -231,7 +289,7 @@ export default function TripDetails() {
     saveTripState({ ...trip, itinerary_items: updatedItems, expenses: updatedExpenses });
   };
 
-  // 4. ADD MANUAL EXPENSE
+  // 5. BUDGET OPERATIONS
   const handleAddExpense = (e) => {
     e.preventDefault();
     if (!expenseTitle || !expenseAmount) return;
@@ -267,6 +325,12 @@ export default function TripDetails() {
     saveTripState({ ...trip, isPublic: !trip.isPublic });
   };
 
+  // Filter cities based on search
+  const filteredCitiesSearch = citiesList.filter(c => 
+    c.name.toLowerCase().includes(citySearchQuery.toLowerCase()) ||
+    c.country.toLowerCase().includes(citySearchQuery.toLowerCase())
+  );
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
       {/* Back Link */}
@@ -301,13 +365,13 @@ export default function TripDetails() {
                 <AlertTriangle className="h-8 w-8 text-red-650 mr-3 shrink-0" />
                 <div>
                   <span className="text-[10px] text-red-500 font-extrabold uppercase tracking-wider block">Warning</span>
-                  <span className="text-xl font-black text-red-650">Over Budget!</span>
+                  <span className="text-xl font-black text-red-655">Over Budget!</span>
                 </div>
               </div>
             )}
           </div>
         </div>
-        <p className="text-gray-650 mt-4 leading-relaxed text-sm max-w-3xl">{trip.description}</p>
+        <p className="text-gray-655 mt-4 leading-relaxed text-sm max-w-3xl">{trip.description}</p>
       </div>
 
       {/* Tabs Layout */}
@@ -341,8 +405,11 @@ export default function TripDetails() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
           {/* Stops Timeline Left (2/3 width) */}
           <div className="lg:col-span-2 space-y-6">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-black text-gray-900">Configure Stops & Order</h2>
+            <div className="flex justify-between items-center mb-4 gap-4">
+              <div>
+                <h2 className="text-xl font-black text-gray-900">Configure Stops & Timeline</h2>
+                <p className="text-xs text-gray-400 mt-1">💡 Drag stop cards vertically to rearrange city order</p>
+              </div>
               <button
                 onClick={() => setIsStopModalOpen(true)}
                 className="lg:hidden inline-flex items-center px-4 py-2 border border-transparent text-xs font-bold rounded-full shadow text-white bg-primary-500 hover:bg-primary-600"
@@ -358,16 +425,26 @@ export default function TripDetails() {
                 </div>
               ) : (
                 trip.stops.map((stop, index) => {
-                  const city = MASTER_CITIES.find(c => c.id === stop.city_id);
+                  const city = citiesList.find(c => c.id === stop.city_id);
                   const stopActivities = trip.itinerary_items 
                     ? trip.itinerary_items.filter(item => item.trip_stop_id === stop.id)
                     : [];
 
                   return (
-                    <div key={stop.id} className="relative flex gap-6 items-start">
-                      {/* Gradient Circle Pin showing stop_order */}
-                      <div className="flex items-center justify-center w-9 h-9 rounded-full bg-gradient-to-br from-primary-500 to-amber-500 text-white font-black text-sm shrink-0 shadow-md ring-4 ring-white relative z-10">
-                        {stop.stop_order}
+                    <div 
+                      key={stop.id} 
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, index)}
+                      onDragOver={(e) => handleDragOver(e, index)}
+                      onDrop={(e) => handleDrop(e, index)}
+                      className={`relative flex gap-6 items-start transition-all ${
+                        draggedIndex === index ? 'opacity-40 scale-98 border-dashed border-2 border-primary-300 rounded-2xl bg-gray-50' : ''
+                      }`}
+                    >
+                      {/* Left Drag indicator pin */}
+                      <div className="flex items-center justify-center w-9 h-9 rounded-full bg-gradient-to-br from-primary-500 to-amber-500 text-white font-black text-sm shrink-0 shadow-md ring-4 ring-white relative z-10 cursor-grab active:cursor-grabbing hover:scale-105 transition-transform" title="Drag to reorder stop">
+                        <GripVertical className="h-3 w-3 shrink-0 text-white/80 absolute left-0.5" />
+                        <span className="pl-1.5">{stop.stop_order}</span>
                       </div>
                       
                       {/* Stop Info Card */}
@@ -383,35 +460,11 @@ export default function TripDetails() {
                             </span>
                           </div>
                           
-                          {/* Reordering and deleting actions */}
+                          {/* Trash action */}
                           <div className="flex items-center gap-1.5">
                             <button
-                              onClick={() => moveStop(index, 'up')}
-                              disabled={index === 0}
-                              className={`p-1.5 rounded-lg border transition-colors ${
-                                index === 0 
-                                  ? 'bg-gray-50 border-gray-100 text-gray-300 cursor-not-allowed' 
-                                  : 'bg-white border-gray-200 hover:bg-gray-50 text-gray-600'
-                              }`}
-                              title="Move Stop Up"
-                            >
-                              <ArrowUp className="h-4 w-4" />
-                            </button>
-                            <button
-                              onClick={() => moveStop(index, 'down')}
-                              disabled={index === (trip.stops ? trip.stops.length - 1 : 0)}
-                              className={`p-1.5 rounded-lg border transition-colors ${
-                                index === (trip.stops ? trip.stops.length - 1 : 0)
-                                  ? 'bg-gray-50 border-gray-100 text-gray-300 cursor-not-allowed'
-                                  : 'bg-white border-gray-200 hover:bg-gray-50 text-gray-600'
-                              }`}
-                              title="Move Stop Down"
-                            >
-                              <ArrowDown className="h-4 w-4" />
-                            </button>
-                            <button
                               onClick={() => handleDeleteStop(stop.id)}
-                              className="text-gray-400 hover:text-red-600 p-1.5 rounded-lg hover:bg-red-50 transition-colors ml-2"
+                              className="text-gray-400 hover:text-red-600 p-1.5 rounded-lg hover:bg-red-50 transition-colors"
                               title="Delete Stop"
                             >
                               <Trash2 className="h-4 w-4" />
@@ -419,7 +472,7 @@ export default function TripDetails() {
                           </div>
                         </div>
 
-                        {/* List of itinerary items inside this stop */}
+                        {/* Activities Checklist */}
                         <div className="mt-6 border-t border-gray-100 pt-4">
                           <div className="flex justify-between items-center mb-3">
                             <h4 className="font-extrabold text-[10px] text-gray-400 uppercase tracking-widest flex items-center">
@@ -459,7 +512,7 @@ export default function TripDetails() {
                                     </div>
                                     <button
                                       onClick={() => handleDeleteItineraryItem(item.id)}
-                                      className="text-gray-400 hover:text-red-650 p-1 hover:bg-red-50 rounded"
+                                      className="text-gray-400 hover:text-red-655 p-1 hover:bg-red-50 rounded"
                                     >
                                       &times;
                                     </button>
@@ -479,17 +532,25 @@ export default function TripDetails() {
 
           {/* Planner Side Panel Right (1/3 width) */}
           <div className="space-y-6 lg:sticky lg:top-24">
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-              <h3 className="text-lg font-black text-gray-900 mb-4">Route Planner</h3>
-              <p className="text-xs text-gray-500 mb-6 leading-relaxed">
-                Add travel stops by selecting preset cities. Arrange your stops chronologically using up/down arrows to manage ordering.
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-4">
+              <h3 className="text-lg font-black text-gray-900 mb-2">Route Planner</h3>
+              <p className="text-xs text-gray-500 leading-relaxed">
+                Add travel stops by selecting preset cities. Drag cards by their numbers on the left to reorder stops interactively!
               </p>
               
               <button
                 onClick={() => setIsStopModalOpen(true)}
-                className="w-full py-3 bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 text-white font-extrabold rounded-full shadow shadow-primary-500/20 text-sm flex items-center justify-center transition-all"
+                className="w-full py-3 bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 text-white font-extrabold rounded-full shadow shadow-primary-500/20 text-sm flex items-center justify-center transition-all animate-pulse-slow"
               >
                 <Plus className="h-5 w-5 mr-1" /> Add New Stop
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsCityModalOpen(true)}
+                className="w-full py-2.5 bg-gray-50 border border-gray-200 hover:bg-gray-100 text-gray-700 font-bold rounded-full text-xs flex items-center justify-center transition-colors"
+              >
+                <Search className="h-4 w-4 mr-1.5" /> Manage Cities Database
               </button>
             </div>
 
@@ -529,7 +590,6 @@ export default function TripDetails() {
               <p className="text-xs text-gray-550 mt-0.5">Toggle between day-by-day chronological list and date grid calendar.</p>
             </div>
             
-            {/* View Mode Toggle buttons */}
             <div className="inline-flex rounded-lg border border-gray-200 bg-gray-50 p-1">
               <button
                 onClick={() => setViewMode('list')}
@@ -558,18 +618,15 @@ export default function TripDetails() {
           {viewMode === 'list' && (
             <div className="space-y-6">
               {tripDateList.map((dateStr, index) => {
-                // Find if a stop is covering this date
                 const stopCover = (trip.stops || []).find(s => dateStr >= s.start_date && dateStr <= s.end_date);
-                const cityCover = stopCover ? MASTER_CITIES.find(c => c.id === stopCover.city_id) : null;
+                const cityCover = stopCover ? citiesList.find(c => c.id === stopCover.city_id) : null;
 
-                // Find activities on this date
                 const dayItems = (trip.itinerary_items || [])
                   .filter(item => item.date === dateStr)
                   .sort((a, b) => a.start_time.localeCompare(b.start_time));
 
                 return (
                   <div key={dateStr} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 hover:shadow-md transition-shadow">
-                    {/* Date / Day Header */}
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-gray-50 pb-3 mb-4 gap-2">
                       <div className="flex items-center gap-3">
                         <span className="bg-gradient-to-br from-primary-500 to-amber-500 text-white text-xs font-black px-3 py-1 rounded-full shadow-sm">
@@ -587,7 +644,6 @@ export default function TripDetails() {
                       )}
                     </div>
 
-                    {/* Day Activity Blocks */}
                     {dayItems.length === 0 ? (
                       <p className="text-xs text-gray-400 italic py-2">No activities scheduled for this day.</p>
                     ) : (
@@ -596,29 +652,26 @@ export default function TripDetails() {
                           const act = MASTER_ACTIVITIES.find(a => a.id === item.activity_id);
                           return (
                             <div key={item.id} className="flex flex-col sm:flex-row items-start gap-4 p-4 bg-gray-50/50 rounded-xl border border-gray-100/50 hover:bg-gray-50 transition-colors">
-                              {/* Time Block */}
                               <div className="flex items-center gap-1.5 text-xs font-black text-gray-800 shrink-0">
                                 <Clock className="h-4 w-4 text-primary-500" />
                                 <span>{item.start_time} - {item.end_time}</span>
                                 {act && <span className="text-gray-400">({act.duration_minutes} mins)</span>}
                               </div>
 
-                              {/* Title / details */}
                               <div className="flex-1">
                                 <span className="font-bold text-base text-gray-900 block">
                                   {act ? act.name : 'Custom Activity'}
                                 </span>
                                 {act && (
-                                  <p className="text-xs text-gray-500 mt-1 font-semibold leading-relaxed">
+                                  <p className="text-xs text-gray-555 mt-1 font-semibold leading-relaxed">
                                     {act.description}
                                   </p>
                                 )}
                               </div>
 
-                              {/* Type & Cost Badges */}
                               {act && (
                                 <div className="flex sm:flex-col items-end gap-2 shrink-0 w-full sm:w-auto mt-2 sm:mt-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-gray-100">
-                                  <span className="bg-primary-50 text-primary-700 text-xs px-2.5 py-0.5 rounded-full font-bold">
+                                  <span className="bg-primary-50 text-primary-750 text-xs px-2.5 py-0.5 rounded-full font-bold">
                                     {act.activity_type}
                                   </span>
                                   <span className="text-sm font-black text-gray-800">
@@ -640,14 +693,13 @@ export default function TripDetails() {
           {/* CALENDAR VIEW GRID */}
           {viewMode === 'calendar' && (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-              {/* Calendar Grid on Left (2/3 width) */}
               <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
                 <h3 className="font-black text-lg text-gray-900 mb-6">Trip Calendar</h3>
                 
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                   {tripDateList.map((dateStr, index) => {
                     const stopCover = (trip.stops || []).find(s => dateStr >= s.start_date && dateStr <= s.end_date);
-                    const cityCover = stopCover ? MASTER_CITIES.find(c => c.id === stopCover.city_id) : null;
+                    const cityCover = stopCover ? citiesList.find(c => c.id === stopCover.city_id) : null;
                     const dayItems = (trip.itinerary_items || []).filter(item => item.date === dateStr);
                     const isSelected = selectedCalendarDate === dateStr;
 
@@ -661,7 +713,6 @@ export default function TripDetails() {
                             : 'bg-white border-gray-200 hover:border-gray-300'
                         }`}
                       >
-                        {/* Day indicator */}
                         <div className="flex justify-between items-start w-full">
                           <span className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full ${
                             isSelected ? 'bg-primary-500 text-white' : 'bg-gray-100 text-gray-500'
@@ -673,15 +724,13 @@ export default function TripDetails() {
                           </span>
                         </div>
 
-                        {/* City acronym */}
                         {cityCover && (
                           <span className="text-[10px] font-black text-teal-650 block mt-2 truncate max-w-full">
                             📍 {cityCover.name}
                           </span>
                         )}
 
-                        {/* Bullet count of activities */}
-                        <div className="mt-3 text-[9px] font-bold text-gray-450 block">
+                        <div className="mt-3 text-[9px] font-bold text-gray-455 block">
                           {dayItems.length} {dayItems.length === 1 ? 'Activity' : 'Activities'}
                         </div>
                       </button>
@@ -690,12 +739,11 @@ export default function TripDetails() {
                 </div>
               </div>
 
-              {/* Side Date Details card (1/3 width) */}
               <div className="space-y-6">
                 <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
                   {selectedCalendarDate ? (
                     <div>
-                      <h4 className="font-black text-lg text-gray-900 border-b border-gray-50 pb-2 mb-4">
+                      <h4 className="font-black text-lg text-gray-909 border-b border-gray-50 pb-2 mb-4">
                         Schedule for {new Date(selectedCalendarDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                       </h4>
                       
@@ -723,7 +771,7 @@ export default function TripDetails() {
                                     </span>
                                   </div>
                                   {act && (
-                                    <div className="flex justify-between text-[10px] text-gray-400 font-extrabold">
+                                    <div className="flex justify-between text-[10px] text-gray-405 font-extrabold">
                                       <span>{act.activity_type} ({act.duration_minutes}m)</span>
                                       <span className="text-gray-700">₹{act.estimated_cost}</span>
                                     </div>
@@ -736,7 +784,7 @@ export default function TripDetails() {
                       })()}
                     </div>
                   ) : (
-                    <div className="text-center py-6 text-gray-400">
+                    <div className="text-center py-6 text-gray-450">
                       <HelpCircle className="h-8 w-8 mx-auto mb-2 text-gray-300" />
                       <p className="text-xs font-semibold">Select a calendar date to view details.</p>
                     </div>
@@ -751,23 +799,22 @@ export default function TripDetails() {
       {/* 3. BUDGET & EXPENSES */}
       {activeTab === 'budget' && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-          {/* Budget Logs and Breakdown Left (2/3 width) */}
           <div className="lg:col-span-2 space-y-6">
             {/* Stats Row */}
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 grid grid-cols-3 gap-4">
               <div className="text-center border-r border-gray-100">
                 <span className="text-xs text-gray-400 font-bold uppercase tracking-wider block">Logged Expense</span>
-                <span className="text-xl font-black text-gray-900 block mt-1">₹{totalSpent.toLocaleString()}</span>
+                <span className="text-xl font-black text-gray-905 block mt-1">₹{totalSpent.toLocaleString()}</span>
               </div>
               <div className="text-center border-r border-gray-100">
                 <span className="text-xs text-gray-400 font-bold uppercase tracking-wider block">Remaining</span>
-                <span className={`text-xl font-black block mt-1 ${remaining < 0 ? 'text-red-650 animate-pulse' : 'text-emerald-600'}`}>
+                <span className={`text-xl font-black block mt-1 ${remaining < 0 ? 'text-red-655 animate-pulse' : 'text-emerald-600'}`}>
                   ₹{remaining.toLocaleString()}
                 </span>
               </div>
               <div className="text-center">
                 <span className="text-xs text-gray-400 font-bold uppercase tracking-wider block">Daily Average</span>
-                <span className="text-xl font-black text-gray-900 block mt-1">
+                <span className="text-xl font-black text-gray-905 block mt-1">
                   ₹{diffDays > 0 ? (totalSpent / diffDays).toFixed(0).toLocaleString() : 0}
                 </span>
               </div>
@@ -775,7 +822,7 @@ export default function TripDetails() {
 
             {/* Category spending bar graphs */}
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-              <h3 className="text-lg font-black text-gray-900 mb-6">Category Spending Breakdown</h3>
+              <h3 className="text-lg font-black text-gray-909 mb-6">Category Spending Breakdown</h3>
               <div className="space-y-4">
                 {categories.map((cat) => {
                   const amt = categoryTotals[cat];
@@ -807,7 +854,7 @@ export default function TripDetails() {
 
             {/* Log list */}
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-              <h3 className="text-lg font-black text-gray-900 mb-4">Logged Expense Details</h3>
+              <h3 className="text-lg font-black text-gray-909 mb-4">Logged Expense Details</h3>
               {(!trip.expenses || trip.expenses.length === 0) ? (
                 <p className="text-sm text-gray-500 italic py-4">No expenses logged yet. Log your first expense on the right.</p>
               ) : (
@@ -835,7 +882,7 @@ export default function TripDetails() {
                               {exp.category}
                             </span>
                           </td>
-                          <td className="py-3.5 px-4 text-right font-black text-gray-950">₹{exp.amount.toLocaleString()}</td>
+                          <td className="py-3.5 px-4 text-right font-black text-gray-955">₹{exp.amount.toLocaleString()}</td>
                           <td className="py-3.5 px-4 text-center">
                             <button
                               onClick={() => handleDeleteExpense(exp.id)}
@@ -903,7 +950,7 @@ export default function TripDetails() {
 
             {isOverBudget && (
               <div className="bg-red-50 border border-red-150 rounded-2xl p-5 flex gap-3 text-red-800 shadow-sm animate-pulse">
-                <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5 text-red-650" />
+                <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5 text-red-655" />
                 <div>
                   <h4 className="font-extrabold text-sm text-red-700">Over-Budget Triggered</h4>
                   <p className="text-xs text-red-600 mt-1 leading-relaxed">
@@ -968,6 +1015,175 @@ export default function TripDetails() {
         </div>
       )}
 
+      {/* MANAGE CITIES DATABASE MODAL */}
+      {isCityModalOpen && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 flex items-center justify-center p-4 backdrop-blur-xs">
+          <div className="bg-white rounded-2xl shadow-xl border border-gray-100 w-full max-w-2xl p-6 space-y-6">
+            <div className="flex justify-between items-center border-b border-gray-100 pb-3">
+              <div>
+                <h3 className="text-lg font-black text-gray-900">Manage Cities Database</h3>
+                <p className="text-xs text-gray-500 mt-0.5">Search existing destinations or add new ones to your system cities list.</p>
+              </div>
+              <button onClick={() => setIsCityModalOpen(false)} className="text-gray-400 hover:text-gray-600">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Search and Toggle Form bar */}
+            <div className="flex flex-col sm:flex-row justify-between items-center gap-4 border-b border-gray-50 pb-4">
+              <div className="relative w-full sm:max-w-xs text-gray-700">
+                <span className="absolute inset-y-0 left-0 flex items-center pl-3">
+                  <Search className="h-4 w-4 text-gray-400" />
+                </span>
+                <input
+                  type="text"
+                  placeholder="Search city by name..."
+                  value={citySearchQuery}
+                  onChange={(e) => setCitySearchQuery(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-xl text-xs bg-white focus:outline-none"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsAddingCity(!isAddingCity)}
+                className="w-full sm:w-auto px-4 py-2 bg-gradient-to-r from-primary-500 to-amber-500 text-white font-bold text-xs rounded-full shadow"
+              >
+                {isAddingCity ? 'Cancel' : '+ Add New City to DB'}
+              </button>
+            </div>
+
+            {/* ADD CITY FORM PANEL */}
+            {isAddingCity && (
+              <form onSubmit={handleAddCity} className="bg-gray-50 p-5 rounded-2xl border border-gray-150 space-y-4 animate-fade-in">
+                <h4 className="font-extrabold text-sm text-gray-900">New City Registration Form</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">City Name</label>
+                    <input
+                      type="text"
+                      required
+                      value={newCityName}
+                      onChange={(e) => setNewCityName(e.target.value)}
+                      placeholder="e.g. London"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs bg-white font-medium"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Country</label>
+                    <input
+                      type="text"
+                      required
+                      value={newCityCountry}
+                      onChange={(e) => setNewCityCountry(e.target.value)}
+                      placeholder="e.g. UK"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs bg-white font-medium"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Region</label>
+                    <input
+                      type="text"
+                      value={newCityRegion}
+                      onChange={(e) => setNewCityRegion(e.target.value)}
+                      placeholder="e.g. Europe"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs bg-white font-medium"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Cost Index (1-5)</label>
+                    <div className="flex items-center gap-2 mt-1">
+                      <input
+                        type="range"
+                        min="1.0"
+                        max="5.0"
+                        step="0.5"
+                        value={newCityCost}
+                        onChange={(e) => setNewCityCost(e.target.value)}
+                        className="w-full"
+                      />
+                      <span className="text-xs font-black text-gray-700 bg-white border px-2 py-0.5 rounded shrink-0">
+                        {newCityCost}
+                      </span>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Popularity (1-100)</label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="100"
+                      value={newCityPopularity}
+                      onChange={(e) => setNewCityPopularity(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs bg-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">City Photo URL (Optional)</label>
+                    <input
+                      type="url"
+                      value={newCityImageUrl}
+                      onChange={(e) => setNewCityImageUrl(e.target.value)}
+                      placeholder="https://images..."
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs bg-white"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-2 pt-2">
+                  <button
+                    type="submit"
+                    className="px-4 py-2 bg-gray-800 hover:bg-gray-900 text-white rounded-lg text-xs font-bold shadow"
+                  >
+                    Register City to Database
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {/* CITIES LIST TABLE */}
+            <div className="max-h-60 overflow-y-auto border border-gray-150 rounded-xl divide-y divide-gray-100">
+              {filteredCitiesSearch.length === 0 ? (
+                <p className="text-xs text-gray-400 italic p-6 text-center">No registered cities match your search filter.</p>
+              ) : (
+                filteredCitiesSearch.map((c) => (
+                  <div key={c.id} className="p-3.5 flex justify-between items-center gap-4 hover:bg-gray-50/50">
+                    <div className="flex items-center gap-3">
+                      <img src={c.image_url} alt={c.name} className="w-10 h-10 rounded-lg object-cover border shrink-0" />
+                      <div>
+                        <span className="font-bold text-sm text-gray-900 block leading-tight">{c.name}, {c.country}</span>
+                        {c.region && <span className="text-[10px] text-gray-450 font-bold uppercase tracking-wider">{c.region}</span>}
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-4 shrink-0 text-xs font-extrabold text-gray-500">
+                      <span className="flex items-center text-amber-500">
+                        <Star className="h-3.5 w-3.5 fill-amber-500 mr-1" /> {c.popularity}
+                      </span>
+                      <span className="flex items-center text-teal-650">
+                        <BarChart3 className="h-3.5 w-3.5 mr-1" /> Cost: {c.cost_index}
+                      </span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="flex justify-end pt-2 border-t border-gray-100">
+              <button
+                type="button"
+                onClick={() => setIsCityModalOpen(false)}
+                className="px-5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-full text-xs"
+              >
+                Close Database Panel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Add Stop Modal Overlay */}
       {isStopModalOpen && (
         <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 flex items-center justify-center p-4 backdrop-blur-xs">
@@ -984,13 +1200,25 @@ export default function TripDetails() {
 
             <form onSubmit={handleAddStop} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-gray-550 uppercase tracking-wider mb-1.5">Destination City</label>
+                <div className="flex justify-between items-center mb-1.5">
+                  <label className="block text-xs font-bold text-gray-550 uppercase tracking-wider">Destination City</label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsStopModalOpen(false);
+                      setIsCityModalOpen(true);
+                    }}
+                    className="text-[10px] text-primary-500 font-bold hover:underline"
+                  >
+                    + Add New City option
+                  </button>
+                </div>
                 <select
                   value={selectedCityId}
                   onChange={(e) => setSelectedCityId(e.target.value)}
                   className="w-full px-3.5 py-2.5 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 text-sm font-semibold"
                 >
-                  {MASTER_CITIES.map((city) => (
+                  {citiesList.map((city) => (
                     <option key={city.id} value={city.id}>
                       {city.name}, {city.country}
                     </option>
@@ -1056,7 +1284,6 @@ export default function TripDetails() {
             </div>
 
             <form onSubmit={handleAddItineraryItem} className="space-y-4">
-              {/* Date selection (limited to stop bounds) */}
               <div>
                 <label className="block text-xs font-bold text-gray-555 uppercase tracking-wider mb-1">Target Date</label>
                 <input
@@ -1070,7 +1297,6 @@ export default function TripDetails() {
                 />
               </div>
 
-              {/* Source selection */}
               <div className="flex gap-4 border-b border-gray-100 pb-3">
                 <label className="inline-flex items-center text-sm font-bold text-gray-700 cursor-pointer">
                   <input
@@ -1094,10 +1320,9 @@ export default function TripDetails() {
                 </label>
               </div>
 
-              {/* Preset Selector */}
               {activitySource === 'preset' ? (
                 <div>
-                  <label className="block text-xs font-bold text-gray-550 uppercase tracking-wider mb-1.5">Select Preset Activity</label>
+                  <label className="block text-xs font-bold text-gray-555 uppercase tracking-wider mb-1.5">Select Preset Activity</label>
                   <select
                     required={activitySource === 'preset'}
                     value={selectedActivityId}
@@ -1113,10 +1338,9 @@ export default function TripDetails() {
                   </select>
                 </div>
               ) : (
-                // Custom fields
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-xs font-bold text-gray-550 uppercase tracking-wider mb-1">Activity Name</label>
+                    <label className="block text-xs font-bold text-gray-555 uppercase tracking-wider mb-1">Activity Name</label>
                     <input
                       type="text"
                       required={activitySource === 'custom'}
@@ -1154,14 +1378,13 @@ export default function TripDetails() {
                         type="number"
                         value={customActivityDuration}
                         onChange={(e) => setCustomActivityDuration(e.target.value)}
-                        className="w-full px-2 py-2 border border-gray-300 rounded-lg text-xs"
+                        className="w-full px-2 py-2 border border-gray-350 rounded-lg text-xs"
                       />
                     </div>
                   </div>
                 </div>
               )}
 
-              {/* Time slots */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-gray-555 uppercase tracking-wider mb-1">Start Time</label>
