@@ -76,9 +76,9 @@ export default function TripDetails() {
   if (!trip) {
     return (
       <div className="max-w-md mx-auto my-12 text-center">
-        <h2 className="text-2xl font-bold text-gray-900">Trip Not Found</h2>
+        <h2 className="text-3xl font-black text-gray-900">Trip Not Found</h2>
         <Link to="/trips" className="mt-4 inline-flex items-center text-primary-500 font-bold">
-          <ArrowLeft className="h-4 w-4 mr-1" /> Back to My Trips
+          <ArrowLeft className="h-5 w-5 mr-1" /> Back to My Trips
         </Link>
       </div>
     );
@@ -156,11 +156,9 @@ export default function TripDetails() {
     const newStops = [...(trip.stops || [])];
     const draggedStop = newStops[draggedIndex];
 
-    // Remove from old index and insert into target index
     newStops.splice(draggedIndex, 1);
     newStops.splice(targetIndex, 0, draggedStop);
 
-    // Re-map stop orders sequentially
     const updatedStops = newStops.map((stop, idx) => ({
       ...stop,
       stop_order: idx + 1
@@ -196,7 +194,6 @@ export default function TripDetails() {
     setCitiesList(freshCitiesList);
     setSelectedCityId(added.id);
 
-    // Reset Form
     setNewCityName('');
     setNewCityCountry('');
     setNewCityRegion('');
@@ -325,53 +322,52 @@ export default function TripDetails() {
     saveTripState({ ...trip, isPublic: !trip.isPublic });
   };
 
-  // Filter cities based on search
   const filteredCitiesSearch = citiesList.filter(c => 
     c.name.toLowerCase().includes(citySearchQuery.toLowerCase()) ||
     c.country.toLowerCase().includes(citySearchQuery.toLowerCase())
   );
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <div className="max-w-[90rem] mx-auto px-6 lg:px-12 py-8"> {/* Expanded screen container width */}
       {/* Back Link */}
-      <Link to="/trips" className="inline-flex items-center text-sm font-bold text-gray-500 hover:text-primary-500 transition-colors mb-6">
-        <ArrowLeft className="h-4 w-4 mr-1" /> Back to My Trips
+      <Link to="/trips" className="inline-flex items-center text-base font-bold text-gray-500 hover:text-primary-500 transition-colors mb-6">
+        <ArrowLeft className="h-5 w-5 mr-1.5" /> Back to My Trips
       </Link>
 
       {/* Main Banner Card */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 md:p-8 mb-8 relative overflow-hidden">
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 md:p-10 mb-8 relative overflow-hidden">
         <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-primary-500 to-amber-500"></div>
         
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
           <div>
-            <h1 className="text-3xl md:text-4xl font-black text-gray-900 tracking-tight">{trip.name}</h1>
-            <p className="text-gray-550 mt-2 flex items-center text-sm font-semibold">
-              <CalendarIcon className="h-4 w-4 mr-2 text-primary-500" /> {trip.start_date} to {trip.end_date} 
-              <span className="ml-2 bg-primary-50 text-primary-700 text-xs px-2.5 py-0.5 rounded-full font-bold">
+            <h1 className="text-4xl md:text-5xl font-black text-gray-900 tracking-tight">{trip.name}</h1>
+            <p className="text-gray-550 mt-3 flex items-center text-base font-bold">
+              <CalendarIcon className="h-5 w-5 mr-2 text-primary-500" /> {trip.start_date} to {trip.end_date} 
+              <span className="ml-3 bg-primary-50 text-primary-700 text-xs px-3 py-1 rounded-full font-black">
                 {diffDays} Days
               </span>
             </p>
           </div>
           <div className="flex gap-4 w-full md:w-auto">
-            <div className="bg-gradient-to-br from-primary-50 to-orange-50 rounded-xl p-4 border border-primary-100 flex items-center flex-1 md:flex-none md:min-w-[160px]">
-              <IndianRupee className="h-8 w-8 text-primary-600 mr-3 shrink-0" />
+            <div className="bg-gradient-to-br from-primary-50 to-orange-50 rounded-xl p-5 border border-primary-100 flex items-center flex-1 md:flex-none md:min-w-[200px]">
+              <IndianRupee className="h-10 w-10 text-primary-600 mr-4 shrink-0" />
               <div>
-                <span className="text-[10px] text-gray-400 font-extrabold uppercase tracking-wider block">Estimated Budget</span>
-                <span className="text-xl font-black text-primary-600">₹{trip.budget.toLocaleString()}</span>
+                <span className="text-xs text-gray-400 font-black uppercase tracking-wider block">Estimated Budget</span>
+                <span className="text-2xl font-black text-primary-600">₹{trip.budget.toLocaleString()}</span>
               </div>
             </div>
             {isOverBudget && (
-              <div className="bg-red-50 rounded-xl p-4 border border-red-150 flex items-center flex-1 md:flex-none animate-pulse">
-                <AlertTriangle className="h-8 w-8 text-red-650 mr-3 shrink-0" />
+              <div className="bg-red-50 rounded-xl p-5 border border-red-150 flex items-center flex-1 md:flex-none animate-pulse">
+                <AlertTriangle className="h-10 w-10 text-red-650 mr-4 shrink-0" />
                 <div>
-                  <span className="text-[10px] text-red-500 font-extrabold uppercase tracking-wider block">Warning</span>
-                  <span className="text-xl font-black text-red-655">Over Budget!</span>
+                  <span className="text-xs text-red-500 font-black uppercase tracking-wider block">Warning</span>
+                  <span className="text-2xl font-black text-red-650">Over Budget!</span>
                 </div>
               </div>
             )}
           </div>
         </div>
-        <p className="text-gray-655 mt-4 leading-relaxed text-sm max-w-3xl">{trip.description}</p>
+        <p className="text-gray-650 mt-5 leading-relaxed text-base max-w-4xl">{trip.description}</p>
       </div>
 
       {/* Tabs Layout */}
@@ -386,7 +382,7 @@ export default function TripDetails() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`pb-4 px-1 border-b-2 font-black text-sm transition-colors ${
+              className={`pb-4 px-1 border-b-2 font-black text-base transition-colors ${
                 activeTab === tab.id
                   ? 'border-primary-500 text-primary-600'
                   : 'border-transparent text-gray-450 hover:text-gray-700 hover:border-gray-300'
@@ -407,20 +403,20 @@ export default function TripDetails() {
           <div className="lg:col-span-2 space-y-6">
             <div className="flex justify-between items-center mb-4 gap-4">
               <div>
-                <h2 className="text-xl font-black text-gray-900">Configure Stops & Timeline</h2>
-                <p className="text-xs text-gray-400 mt-1">💡 Drag stop cards vertically to rearrange city order</p>
+                <h2 className="text-2xl font-black text-gray-900 tracking-tight">Configure Stops & Timeline</h2>
+                <p className="text-sm text-gray-400 mt-1 font-bold">💡 Drag stop cards vertically to rearrange city order</p>
               </div>
               <button
                 onClick={() => setIsStopModalOpen(true)}
-                className="lg:hidden inline-flex items-center px-4 py-2 border border-transparent text-xs font-bold rounded-full shadow text-white bg-primary-500 hover:bg-primary-600"
+                className="lg:hidden inline-flex items-center px-5 py-2.5 border border-transparent text-sm font-bold rounded-full shadow text-white bg-primary-500 hover:bg-primary-600"
               >
-                <Plus className="h-4 w-4 mr-1" /> Add Stop
+                <Plus className="h-4.5 w-4.5 mr-1" /> Add Stop
               </button>
             </div>
 
-            <div className="space-y-6 relative before:absolute before:inset-y-2 before:left-[17px] before:w-0.5 before:bg-gradient-to-b before:from-primary-500 before:to-amber-500">
+            <div className="space-y-6 relative before:absolute before:inset-y-2 before:left-[19px] before:w-0.5 before:bg-gradient-to-b before:from-primary-500 before:to-amber-500">
               {(!trip.stops || trip.stops.length === 0) ? (
-                <div className="bg-white rounded-2xl border border-gray-100 p-10 text-center text-gray-500 italic shadow-sm ml-6">
+                <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center text-gray-500 italic shadow-sm ml-6 text-base">
                   No stops added to this trip yet. Use the route planner panel to add your destinations!
                 </div>
               ) : (
@@ -442,21 +438,21 @@ export default function TripDetails() {
                       }`}
                     >
                       {/* Left Drag indicator pin */}
-                      <div className="flex items-center justify-center w-9 h-9 rounded-full bg-gradient-to-br from-primary-500 to-amber-500 text-white font-black text-sm shrink-0 shadow-md ring-4 ring-white relative z-10 cursor-grab active:cursor-grabbing hover:scale-105 transition-transform" title="Drag to reorder stop">
-                        <GripVertical className="h-3 w-3 shrink-0 text-white/80 absolute left-0.5" />
-                        <span className="pl-1.5">{stop.stop_order}</span>
+                      <div className="flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-primary-500 to-amber-500 text-white font-black text-sm shrink-0 shadow-md ring-4 ring-white relative z-10 cursor-grab active:cursor-grabbing hover:scale-105 transition-transform" title="Drag to reorder stop">
+                        <GripVertical className="h-3.5 w-3.5 shrink-0 text-white/80 absolute left-0.5" />
+                        <span className="pl-2">{stop.stop_order}</span>
                       </div>
                       
                       {/* Stop Info Card */}
-                      <div className="flex-1 bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow">
+                      <div className="flex-1 bg-white rounded-2xl shadow-sm border border-gray-100 p-6 md:p-8 hover:shadow-md transition-shadow">
                         <div className="flex justify-between items-start mb-4 gap-4">
                           <div>
-                            <h3 className="text-xl font-bold text-gray-950 flex items-center">
-                              <MapPin className="h-5 w-5 text-primary-500 mr-1.5 shrink-0" /> 
+                            <h3 className="text-2xl font-bold text-gray-950 flex items-center">
+                              <MapPin className="h-6 w-6 text-primary-500 mr-2 shrink-0" /> 
                               {city ? `${city.name}, ${city.country}` : 'Custom City'}
                             </h3>
-                            <span className="text-xs text-gray-450 font-bold block mt-1.5 flex items-center">
-                              <Clock className="h-3.5 w-3.5 mr-1" /> {stop.start_date} to {stop.end_date}
+                            <span className="text-sm text-gray-500 font-bold block mt-2 flex items-center">
+                              <Clock className="h-4 w-4 mr-1.5" /> {stop.start_date} to {stop.end_date}
                             </span>
                           </div>
                           
@@ -464,46 +460,46 @@ export default function TripDetails() {
                           <div className="flex items-center gap-1.5">
                             <button
                               onClick={() => handleDeleteStop(stop.id)}
-                              className="text-gray-400 hover:text-red-600 p-1.5 rounded-lg hover:bg-red-50 transition-colors"
+                              className="text-gray-450 hover:text-red-600 p-2 rounded-lg hover:bg-red-50 transition-colors"
                               title="Delete Stop"
                             >
-                              <Trash2 className="h-4 w-4" />
+                              <Trash2 className="h-5 w-5" />
                             </button>
                           </div>
                         </div>
 
                         {/* Activities Checklist */}
-                        <div className="mt-6 border-t border-gray-100 pt-4">
-                          <div className="flex justify-between items-center mb-3">
-                            <h4 className="font-extrabold text-[10px] text-gray-400 uppercase tracking-widest flex items-center">
-                              <CheckSquare className="h-4 w-4 mr-1 text-primary-500" /> Day Activities Checklist
+                        <div className="mt-6 border-t border-gray-100 pt-5">
+                          <div className="flex justify-between items-center mb-4">
+                            <h4 className="font-black text-xs text-gray-400 uppercase tracking-widest flex items-center">
+                              <CheckSquare className="h-4.5 w-4.5 mr-1.5 text-primary-500" /> Day Activities Checklist
                             </h4>
                             <button
                               type="button"
                               onClick={() => handleOpenActivityModal(stop.id)}
-                              className="text-xs text-primary-500 font-bold hover:text-primary-650"
+                              className="text-sm text-primary-500 font-bold hover:text-primary-650"
                             >
                               + Add Activity block
                             </button>
                           </div>
 
                           {stopActivities.length === 0 ? (
-                            <p className="text-xs text-gray-400 italic">No activity blocks logged for this city. click "+ Add Activity block" above.</p>
+                            <p className="text-xs text-gray-400 italic">No activity blocks logged for this city. Click "+ Add Activity block" above.</p>
                           ) : (
                             <div className="divide-y divide-gray-50">
                               {stopActivities.map((item) => {
                                 const actDetails = MASTER_ACTIVITIES.find(a => a.id === item.activity_id);
                                 return (
-                                  <div key={item.id} className="py-3 flex justify-between items-center gap-4">
-                                    <div className="flex items-start gap-3">
-                                      <span className="bg-primary-50 text-primary-600 text-xs font-black px-2 py-0.5 rounded mt-0.5 select-none shrink-0">
+                                  <div key={item.id} className="py-4 flex justify-between items-center gap-4">
+                                    <div className="flex items-start gap-4">
+                                      <span className="bg-primary-50 text-primary-600 text-sm font-black px-2.5 py-1 rounded mt-0.5 select-none shrink-0">
                                         {item.start_time}
                                       </span>
                                       <div>
-                                        <span className="font-bold text-gray-900 text-sm block">
+                                        <span className="font-bold text-gray-900 text-base block">
                                           {actDetails ? actDetails.name : 'Custom Activity'}
                                         </span>
-                                        <span className="text-xs text-gray-450 flex items-center gap-2 mt-0.5 font-semibold">
+                                        <span className="text-sm text-gray-500 flex items-center gap-3 mt-1 font-semibold">
                                           <span>Date: {item.date}</span>
                                           {actDetails && <span>• Cost: ₹{actDetails.estimated_cost}</span>}
                                           {actDetails && <span>• Type: {actDetails.activity_type}</span>}
@@ -512,7 +508,7 @@ export default function TripDetails() {
                                     </div>
                                     <button
                                       onClick={() => handleDeleteItineraryItem(item.id)}
-                                      className="text-gray-400 hover:text-red-655 p-1 hover:bg-red-50 rounded"
+                                      className="text-gray-400 hover:text-red-655 p-1.5 hover:bg-red-50 rounded"
                                     >
                                       &times;
                                     </button>
@@ -532,47 +528,47 @@ export default function TripDetails() {
 
           {/* Planner Side Panel Right (1/3 width) */}
           <div className="space-y-6 lg:sticky lg:top-24">
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-4">
-              <h3 className="text-lg font-black text-gray-900 mb-2">Route Planner</h3>
-              <p className="text-xs text-gray-500 leading-relaxed">
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-4 md:p-8">
+              <h3 className="text-xl font-black text-gray-900 mb-2">Route Planner</h3>
+              <p className="text-sm text-gray-500 leading-relaxed font-semibold">
                 Add travel stops by selecting preset cities. Drag cards by their numbers on the left to reorder stops interactively!
               </p>
               
               <button
                 onClick={() => setIsStopModalOpen(true)}
-                className="w-full py-3 bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 text-white font-extrabold rounded-full shadow shadow-primary-500/20 text-sm flex items-center justify-center transition-all animate-pulse-slow"
+                className="w-full py-4 bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 text-white font-extrabold rounded-full shadow-md text-base flex items-center justify-center transition-all animate-pulse-slow"
               >
-                <Plus className="h-5 w-5 mr-1" /> Add New Stop
+                <Plus className="h-5 w-5 mr-1.5" /> Add New Stop
               </button>
 
               <button
                 type="button"
                 onClick={() => setIsCityModalOpen(true)}
-                className="w-full py-2.5 bg-gray-50 border border-gray-200 hover:bg-gray-100 text-gray-700 font-bold rounded-full text-xs flex items-center justify-center transition-colors"
+                className="w-full py-3 bg-gray-50 border border-gray-200 hover:bg-gray-100 text-gray-700 font-bold rounded-full text-sm flex items-center justify-center transition-colors"
               >
-                <Search className="h-4 w-4 mr-1.5" /> Manage Cities Database
+                <Search className="h-4.5 w-4.5 mr-2" /> Manage Cities Database
               </button>
             </div>
 
             {/* Quick Summary stats */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-              <h3 className="text-lg font-black text-gray-900 mb-4">Itinerary Summary</h3>
-              <div className="space-y-4 text-sm font-medium">
-                <div className="flex justify-between py-2 border-b border-gray-50 text-gray-655">
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 md:p-8">
+              <h3 className="text-xl font-black text-gray-900 mb-4">Itinerary Summary</h3>
+              <div className="space-y-4 text-base font-semibold">
+                <div className="flex justify-between py-2.5 border-b border-gray-50 text-gray-655">
                   <span>Planned Stops</span>
-                  <span className="font-extrabold text-gray-950">{trip.stops ? trip.stops.length : 0} Cities</span>
+                  <span className="font-black text-gray-950">{trip.stops ? trip.stops.length : 0} Cities</span>
                 </div>
-                <div className="flex justify-between py-2 border-b border-gray-50 text-gray-655">
+                <div className="flex justify-between py-2.5 border-b border-gray-50 text-gray-655">
                   <span>Start Date</span>
-                  <span className="font-extrabold text-gray-950">{trip.start_date}</span>
+                  <span className="font-black text-gray-955">{trip.start_date}</span>
                 </div>
-                <div className="flex justify-between py-2 border-b border-gray-50 text-gray-655">
+                <div className="flex justify-between py-2.5 border-b border-gray-50 text-gray-655">
                   <span>End Date</span>
-                  <span className="font-extrabold text-gray-950">{trip.end_date}</span>
+                  <span className="font-black text-gray-955">{trip.end_date}</span>
                 </div>
-                <div className="flex justify-between py-2 text-gray-655">
+                <div className="flex justify-between py-2.5 text-gray-655">
                   <span>Total Duration</span>
-                  <span className="font-extrabold text-gray-950">{diffDays} Days</span>
+                  <span className="font-black text-gray-955">{diffDays} Days</span>
                 </div>
               </div>
             </div>
@@ -584,32 +580,32 @@ export default function TripDetails() {
       {activeTab === 'view' && (
         <div className="space-y-6">
           {/* Header Controls */}
-          <div className="flex justify-between items-center mb-2 bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
+          <div className="flex justify-between items-center mb-2 bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
             <div>
-              <h2 className="text-xl font-black text-gray-900">Review Itinerary Plan</h2>
-              <p className="text-xs text-gray-550 mt-0.5">Toggle between day-by-day chronological list and date grid calendar.</p>
+              <h2 className="text-2xl font-black text-gray-900 tracking-tight">Review Itinerary Plan</h2>
+              <p className="text-sm text-gray-550 mt-1 font-bold">Toggle between day-by-day chronological list and date grid calendar.</p>
             </div>
             
             <div className="inline-flex rounded-lg border border-gray-200 bg-gray-50 p-1">
               <button
                 onClick={() => setViewMode('list')}
-                className={`inline-flex items-center px-3 py-1.5 rounded-md text-xs font-bold transition-all ${
+                className={`inline-flex items-center px-4 py-2.5 rounded-md text-sm font-bold transition-all ${
                   viewMode === 'list' 
                     ? 'bg-white text-primary-600 shadow-sm' 
                     : 'text-gray-500 hover:text-gray-700'
                 }`}
               >
-                <List className="h-3.5 w-3.5 mr-1" /> List View
+                <List className="h-4.5 w-4.5 mr-1.5" /> List View
               </button>
               <button
                 onClick={() => setViewMode('calendar')}
-                className={`inline-flex items-center px-3 py-1.5 rounded-md text-xs font-bold transition-all ${
+                className={`inline-flex items-center px-4 py-2.5 rounded-md text-sm font-bold transition-all ${
                   viewMode === 'calendar' 
                     ? 'bg-white text-primary-600 shadow-sm' 
                     : 'text-gray-500 hover:text-gray-700'
                 }`}
               >
-                <Calendar className="h-3.5 w-3.5 mr-1" /> Calendar View
+                <Calendar className="h-4.5 w-4.5 mr-1.5" /> Calendar View
               </button>
             </div>
           </div>
@@ -626,44 +622,44 @@ export default function TripDetails() {
                   .sort((a, b) => a.start_time.localeCompare(b.start_time));
 
                 return (
-                  <div key={dateStr} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 hover:shadow-md transition-shadow">
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-gray-50 pb-3 mb-4 gap-2">
-                      <div className="flex items-center gap-3">
-                        <span className="bg-gradient-to-br from-primary-500 to-amber-500 text-white text-xs font-black px-3 py-1 rounded-full shadow-sm">
+                  <div key={dateStr} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 md:p-8 hover:shadow-md transition-shadow">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-gray-50 pb-4 mb-5 gap-2">
+                      <div className="flex items-center gap-3.5">
+                        <span className="bg-gradient-to-br from-primary-500 to-amber-500 text-white text-xs font-black px-3.5 py-1.5 rounded-full shadow-sm">
                           Day {index + 1}
                         </span>
-                        <h3 className="font-extrabold text-base text-gray-900">
+                        <h3 className="font-extrabold text-lg text-gray-900">
                           {new Date(dateStr).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                         </h3>
                       </div>
                       
                       {cityCover && (
-                        <div className="flex items-center text-xs font-extrabold text-teal-650 bg-teal-50 px-3 py-1 rounded-full border border-teal-100/50">
-                          <MapPin className="h-3.5 w-3.5 mr-1" /> {cityCover.name}, {cityCover.country}
+                        <div className="flex items-center text-xs font-extrabold text-teal-650 bg-teal-50 px-3.5 py-1.5 rounded-full border border-teal-100/50">
+                          <MapPin className="h-4 w-4 mr-1" /> {cityCover.name}, {cityCover.country}
                         </div>
                       )}
                     </div>
 
                     {dayItems.length === 0 ? (
-                      <p className="text-xs text-gray-400 italic py-2">No activities scheduled for this day.</p>
+                      <p className="text-sm text-gray-400 italic py-2">No activities scheduled for this day.</p>
                     ) : (
                       <div className="space-y-4">
                         {dayItems.map((item) => {
                           const act = MASTER_ACTIVITIES.find(a => a.id === item.activity_id);
                           return (
-                            <div key={item.id} className="flex flex-col sm:flex-row items-start gap-4 p-4 bg-gray-50/50 rounded-xl border border-gray-100/50 hover:bg-gray-50 transition-colors">
-                              <div className="flex items-center gap-1.5 text-xs font-black text-gray-800 shrink-0">
-                                <Clock className="h-4 w-4 text-primary-500" />
+                            <div key={item.id} className="flex flex-col sm:flex-row items-start gap-4 p-5 bg-gray-50/50 rounded-xl border border-gray-100/50 hover:bg-gray-50 transition-colors">
+                              <div className="flex items-center gap-2 text-sm font-black text-gray-800 shrink-0">
+                                <Clock className="h-5 w-5 text-primary-500" />
                                 <span>{item.start_time} - {item.end_time}</span>
                                 {act && <span className="text-gray-400">({act.duration_minutes} mins)</span>}
                               </div>
 
                               <div className="flex-1">
-                                <span className="font-bold text-base text-gray-900 block">
+                                <span className="font-bold text-lg text-gray-900 block">
                                   {act ? act.name : 'Custom Activity'}
                                 </span>
                                 {act && (
-                                  <p className="text-xs text-gray-555 mt-1 font-semibold leading-relaxed">
+                                  <p className="text-sm text-gray-555 mt-1.5 font-bold leading-relaxed">
                                     {act.description}
                                   </p>
                                 )}
@@ -671,10 +667,10 @@ export default function TripDetails() {
 
                               {act && (
                                 <div className="flex sm:flex-col items-end gap-2 shrink-0 w-full sm:w-auto mt-2 sm:mt-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-gray-100">
-                                  <span className="bg-primary-50 text-primary-750 text-xs px-2.5 py-0.5 rounded-full font-bold">
+                                  <span className="bg-primary-50 text-primary-750 text-xs px-3 py-1 rounded-full font-black">
                                     {act.activity_type}
                                   </span>
-                                  <span className="text-sm font-black text-gray-800">
+                                  <span className="text-base font-black text-gray-850">
                                     ₹{act.estimated_cost.toLocaleString()}
                                   </span>
                                 </div>
@@ -693,8 +689,8 @@ export default function TripDetails() {
           {/* CALENDAR VIEW GRID */}
           {viewMode === 'calendar' && (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-              <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-                <h3 className="font-black text-lg text-gray-900 mb-6">Trip Calendar</h3>
+              <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-100 shadow-sm p-6 md:p-8">
+                <h3 className="font-black text-xl text-gray-900 mb-6">Trip Calendar</h3>
                 
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                   {tripDateList.map((dateStr, index) => {
@@ -707,30 +703,30 @@ export default function TripDetails() {
                       <button
                         key={dateStr}
                         onClick={() => setSelectedCalendarDate(dateStr)}
-                        className={`flex flex-col justify-between p-4 rounded-xl text-left border-2 transition-all min-h-[110px] ${
+                        className={`flex flex-col justify-between p-5 rounded-xl text-left border-2 transition-all min-h-[130px] ${
                           isSelected
                             ? 'bg-primary-50/50 border-primary-500 shadow'
                             : 'bg-white border-gray-200 hover:border-gray-300'
                         }`}
                       >
                         <div className="flex justify-between items-start w-full">
-                          <span className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full ${
+                          <span className={`text-[10px] font-extrabold uppercase px-2.5 py-1 rounded-full ${
                             isSelected ? 'bg-primary-500 text-white' : 'bg-gray-100 text-gray-500'
                           }`}>
                             Day {index + 1}
                           </span>
-                          <span className="text-xs text-gray-400 font-bold mt-0.5">
+                          <span className="text-sm text-gray-400 font-bold mt-0.5">
                             {dateStr.split('-')[2]}
                           </span>
                         </div>
 
                         {cityCover && (
-                          <span className="text-[10px] font-black text-teal-650 block mt-2 truncate max-w-full">
+                          <span className="text-xs font-black text-teal-650 block mt-2 truncate max-w-full">
                             📍 {cityCover.name}
                           </span>
                         )}
 
-                        <div className="mt-3 text-[9px] font-bold text-gray-455 block">
+                        <div className="mt-3 text-xs font-bold text-gray-455 block">
                           {dayItems.length} {dayItems.length === 1 ? 'Activity' : 'Activities'}
                         </div>
                       </button>
@@ -740,10 +736,10 @@ export default function TripDetails() {
               </div>
 
               <div className="space-y-6">
-                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 md:p-8">
                   {selectedCalendarDate ? (
                     <div>
-                      <h4 className="font-black text-lg text-gray-909 border-b border-gray-50 pb-2 mb-4">
+                      <h4 className="font-black text-xl text-gray-900 border-b border-gray-55 pb-2 mb-4">
                         Schedule for {new Date(selectedCalendarDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                       </h4>
                       
@@ -761,17 +757,17 @@ export default function TripDetails() {
                             {dayItems.map(item => {
                               const act = MASTER_ACTIVITIES.find(a => a.id === item.activity_id);
                               return (
-                                <div key={item.id} className="p-3 bg-gray-50 rounded-xl border border-gray-100">
-                                  <div className="flex justify-between items-start gap-2 mb-1.5">
-                                    <span className="font-extrabold text-sm text-gray-900 block truncate leading-tight">
+                                <div key={item.id} className="p-4 bg-gray-50 rounded-xl border border-gray-100">
+                                  <div className="flex justify-between items-start gap-2 mb-2">
+                                    <span className="font-extrabold text-base text-gray-900 block truncate leading-tight">
                                       {act ? act.name : 'Custom Activity'}
                                     </span>
-                                    <span className="bg-primary-50 text-primary-750 text-[9px] font-extrabold px-1.5 py-0.5 rounded shrink-0 uppercase">
+                                    <span className="bg-primary-50 text-primary-750 text-[10px] font-extrabold px-2 py-0.5 rounded shrink-0 uppercase">
                                       {item.start_time}
                                     </span>
                                   </div>
                                   {act && (
-                                    <div className="flex justify-between text-[10px] text-gray-405 font-extrabold">
+                                    <div className="flex justify-between text-xs text-gray-500 font-extrabold">
                                       <span>{act.activity_type} ({act.duration_minutes}m)</span>
                                       <span className="text-gray-700">₹{act.estimated_cost}</span>
                                     </div>
@@ -801,28 +797,28 @@ export default function TripDetails() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
           <div className="lg:col-span-2 space-y-6">
             {/* Stats Row */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 grid grid-cols-3 gap-4">
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 grid grid-cols-3 gap-4 md:p-8">
               <div className="text-center border-r border-gray-100">
-                <span className="text-xs text-gray-400 font-bold uppercase tracking-wider block">Logged Expense</span>
-                <span className="text-xl font-black text-gray-905 block mt-1">₹{totalSpent.toLocaleString()}</span>
+                <span className="text-sm text-gray-400 font-bold uppercase tracking-wider block">Logged Expense</span>
+                <span className="text-2xl font-black text-gray-900 block mt-1">₹{totalSpent.toLocaleString()}</span>
               </div>
               <div className="text-center border-r border-gray-100">
-                <span className="text-xs text-gray-400 font-bold uppercase tracking-wider block">Remaining</span>
-                <span className={`text-xl font-black block mt-1 ${remaining < 0 ? 'text-red-655 animate-pulse' : 'text-emerald-600'}`}>
+                <span className="text-sm text-gray-400 font-bold uppercase tracking-wider block">Remaining</span>
+                <span className={`text-2xl font-black block mt-1 ${remaining < 0 ? 'text-red-655 animate-pulse' : 'text-emerald-600'}`}>
                   ₹{remaining.toLocaleString()}
                 </span>
               </div>
               <div className="text-center">
-                <span className="text-xs text-gray-400 font-bold uppercase tracking-wider block">Daily Average</span>
-                <span className="text-xl font-black text-gray-905 block mt-1">
+                <span className="text-sm text-gray-400 font-bold uppercase tracking-wider block">Daily Average</span>
+                <span className="text-2xl font-black text-gray-900 block mt-1">
                   ₹{diffDays > 0 ? (totalSpent / diffDays).toFixed(0).toLocaleString() : 0}
                 </span>
               </div>
             </div>
 
             {/* Category spending bar graphs */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-              <h3 className="text-lg font-black text-gray-909 mb-6">Category Spending Breakdown</h3>
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 md:p-8">
+              <h3 className="text-xl font-black text-gray-900 mb-6">Category Spending Breakdown</h3>
               <div className="space-y-4">
                 {categories.map((cat) => {
                   const amt = categoryTotals[cat];
@@ -830,8 +826,8 @@ export default function TripDetails() {
                   const capPct = Math.min(pct, 100);
                   
                   return (
-                    <div key={cat} className="space-y-1">
-                      <div className="flex justify-between text-xs font-bold text-gray-550">
+                    <div key={cat} className="space-y-2">
+                      <div className="flex justify-between text-sm font-bold text-gray-550">
                         <span>{cat}</span>
                         <span>₹{amt.toLocaleString()} ({pct.toFixed(0)}%)</span>
                       </div>
@@ -853,27 +849,27 @@ export default function TripDetails() {
             </div>
 
             {/* Log list */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-              <h3 className="text-lg font-black text-gray-909 mb-4">Logged Expense Details</h3>
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 md:p-8">
+              <h3 className="text-xl font-black text-gray-900 mb-4">Logged Expense Details</h3>
               {(!trip.expenses || trip.expenses.length === 0) ? (
                 <p className="text-sm text-gray-500 italic py-4">No expenses logged yet. Log your first expense on the right.</p>
               ) : (
                 <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-250 text-left text-sm">
+                  <table className="min-w-full divide-y divide-gray-250 text-left text-base">
                     <thead>
-                      <tr className="text-gray-400 uppercase tracking-wider text-[10px] font-extrabold">
+                      <tr className="text-gray-400 uppercase tracking-wider text-[11px] font-black">
                         <th className="py-3 px-4">Title</th>
                         <th className="py-3 px-4">Category</th>
                         <th className="py-3 px-4 text-right">Amount</th>
                         <th className="py-3 px-4 text-center">Action</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-100">
+                    <tbody className="divide-y divide-gray-100 font-semibold">
                       {trip.expenses.map((exp) => (
                         <tr key={exp.id} className="hover:bg-gray-50/50">
-                          <td className="py-3.5 px-4 font-bold text-gray-900">{exp.title || exp.description}</td>
-                          <td className="py-3.5 px-4">
-                            <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-bold ${
+                          <td className="py-4 px-4 font-bold text-gray-900">{exp.title || exp.description}</td>
+                          <td className="py-4 px-4">
+                            <span className={`inline-flex px-3 py-1 rounded-full text-xs font-bold ${
                               exp.category === 'Transport' ? 'bg-blue-50 text-blue-700 border border-blue-100/50' :
                               exp.category === 'Lodging' ? 'bg-indigo-50 text-indigo-700 border border-indigo-100/50' :
                               exp.category === 'Food' ? 'bg-orange-50 text-orange-700 border border-orange-100/50' :
@@ -882,13 +878,13 @@ export default function TripDetails() {
                               {exp.category}
                             </span>
                           </td>
-                          <td className="py-3.5 px-4 text-right font-black text-gray-955">₹{exp.amount.toLocaleString()}</td>
-                          <td className="py-3.5 px-4 text-center">
+                          <td className="py-4 px-4 text-right font-black text-gray-950">₹{exp.amount.toLocaleString()}</td>
+                          <td className="py-4 px-4 text-center">
                             <button
                               onClick={() => handleDeleteExpense(exp.id)}
-                              className="text-gray-400 hover:text-red-655 p-1 rounded hover:bg-red-50"
+                              className="text-gray-400 hover:text-red-655 p-1.5 rounded hover:bg-red-50"
                             >
-                              <Trash2 className="h-4 w-4" />
+                              <Trash2 className="h-4.5 w-4.5" />
                             </button>
                           </td>
                         </tr>
@@ -902,37 +898,37 @@ export default function TripDetails() {
 
           {/* Budget Forms Right (1/3 width) */}
           <div className="space-y-6 lg:sticky lg:top-24">
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-              <h3 className="text-lg font-black text-gray-955 mb-4">Log Expense</h3>
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 md:p-8">
+              <h3 className="text-xl font-black text-gray-955 mb-4">Log Expense</h3>
               <form onSubmit={handleAddExpense} className="space-y-4">
                 <div>
-                  <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Expense Title</label>
+                  <label className="block text-xs font-bold text-gray-450 uppercase tracking-wider mb-2">Expense Title</label>
                   <input
                     type="text"
                     required
                     value={expenseTitle}
                     onChange={(e) => setExpenseTitle(e.target.value)}
                     placeholder="e.g. Flight to Paris, Resort deposit"
-                    className="w-full px-3.5 py-2.5 border border-gray-250 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 text-sm bg-white"
+                    className="w-full px-4 py-3 border border-gray-250 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 text-base bg-white"
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Amount (INR ₹)</label>
+                  <label className="block text-xs font-bold text-gray-455 uppercase tracking-wider mb-2">Amount (INR ₹)</label>
                   <input
                     type="number"
                     required
                     value={expenseAmount}
                     onChange={(e) => setExpenseAmount(e.target.value)}
                     placeholder="5000"
-                    className="w-full px-3.5 py-2.5 border border-gray-255 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 text-sm bg-white"
+                    className="w-full px-4 py-3 border border-gray-255 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 text-base bg-white"
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Category</label>
+                  <label className="block text-xs font-bold text-gray-455 uppercase tracking-wider mb-2">Category</label>
                   <select
                     value={expenseCategory}
                     onChange={(e) => setExpenseCategory(e.target.value)}
-                    className="w-full px-3.5 py-2.5 border border-gray-255 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 text-sm font-semibold"
+                    className="w-full px-4 py-3 border border-gray-255 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 text-base font-semibold"
                   >
                     {categories.map((c) => (
                       <option key={c} value={c}>{c}</option>
@@ -941,7 +937,7 @@ export default function TripDetails() {
                 </div>
                 <button
                   type="submit"
-                  className="w-full py-3 bg-gray-800 hover:bg-gray-900 text-white rounded-full text-sm font-extrabold shadow-sm transition-all"
+                  className="w-full py-3.5 bg-gray-800 hover:bg-gray-900 text-white rounded-full text-base font-extrabold shadow-sm transition-all"
                 >
                   Save Logged Expense
                 </button>
@@ -949,11 +945,11 @@ export default function TripDetails() {
             </div>
 
             {isOverBudget && (
-              <div className="bg-red-50 border border-red-150 rounded-2xl p-5 flex gap-3 text-red-800 shadow-sm animate-pulse">
-                <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5 text-red-655" />
+              <div className="bg-red-50 border border-red-150 rounded-2xl p-6 flex gap-3 text-red-800 shadow-sm animate-pulse">
+                <AlertTriangle className="h-6 w-6 shrink-0 mt-0.5 text-red-655" />
                 <div>
-                  <h4 className="font-extrabold text-sm text-red-700">Over-Budget Triggered</h4>
-                  <p className="text-xs text-red-600 mt-1 leading-relaxed">
+                  <h4 className="font-extrabold text-base text-red-700">Over-Budget Triggered</h4>
+                  <p className="text-sm text-red-600 mt-1 leading-relaxed font-bold">
                     Total expenses have exceeded the trip budget limit by ₹{Math.abs(remaining).toLocaleString()}! Review spent logs.
                   </p>
                 </div>
@@ -965,16 +961,16 @@ export default function TripDetails() {
 
       {/* 4. SHARE TRIP */}
       {activeTab === 'share' && (
-        <div className="max-w-2xl bg-white rounded-2xl border border-gray-100 shadow-sm p-6 md:p-8 space-y-6">
+        <div className="max-w-3xl bg-white rounded-2xl border border-gray-100 shadow-sm p-6 md:p-8 space-y-6">
           <div>
-            <h2 className="text-xl font-black text-gray-905">Share Itinerary</h2>
-            <p className="text-sm text-gray-500 mt-1">Generate a public URL to share your itinerary and budget highlights with family or friends.</p>
+            <h2 className="text-2xl font-black text-gray-905">Share Itinerary</h2>
+            <p className="text-base text-gray-500 mt-1.5 font-bold">Generate a public URL to share your itinerary and budget highlights with family or friends.</p>
           </div>
 
-          <div className="flex justify-between items-center py-4 border-t border-b border-gray-100">
+          <div className="flex justify-between items-center py-5 border-t border-b border-gray-100">
             <div>
-              <span className="font-bold text-sm text-gray-900 block">Make Itinerary Public</span>
-              <span className="text-xs text-gray-550">Anyone with the link can view (read-only)</span>
+              <span className="font-bold text-base text-gray-900 block">Make Itinerary Public</span>
+              <span className="text-sm text-gray-550 font-bold">Anyone with the link can view (read-only)</span>
             </div>
             <button
               onClick={togglePublicStatus}
@@ -995,20 +991,20 @@ export default function TripDetails() {
                     type="text"
                     readOnly
                     value={`${window.location.origin}/share/${trip.id}`}
-                    className="flex-1 bg-gray-50 px-3.5 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-600 focus:outline-none cursor-text select-all"
+                    className="flex-1 bg-gray-50 px-4 py-3 border border-gray-300 rounded-lg text-sm text-gray-600 focus:outline-none cursor-text select-all font-semibold"
                   />
                   <button
                     onClick={handleCopyLink}
-                    className="inline-flex items-center px-5 py-2.5 border border-transparent text-sm font-extrabold rounded-lg shadow-sm text-white bg-primary-500 hover:bg-primary-600 transition-all shrink-0"
+                    className="inline-flex items-center px-6 py-3 border border-transparent text-sm font-extrabold rounded-lg shadow-sm text-white bg-primary-500 hover:bg-primary-600 transition-all shrink-0"
                   >
-                    {copied ? <ClipboardCheck className="h-4 w-4 mr-2" /> : <Clipboard className="h-4 w-4 mr-2" />}
+                    {copied ? <ClipboardCheck className="h-5 w-5 mr-2" /> : <Clipboard className="h-5 w-5 mr-2" />}
                     {copied ? 'Copied!' : 'Copy Link'}
                   </button>
                 </div>
               </div>
             </div>
           ) : (
-            <div className="text-center py-6 text-gray-500 text-sm italic">
+            <div className="text-center py-6 text-gray-500 text-base italic">
               Sharing is disabled. Enable "Make Itinerary Public" to generate the share link.
             </div>
           )}
@@ -1021,7 +1017,7 @@ export default function TripDetails() {
           <div className="bg-white rounded-2xl shadow-xl border border-gray-100 w-full max-w-2xl p-6 space-y-6">
             <div className="flex justify-between items-center border-b border-gray-100 pb-3">
               <div>
-                <h3 className="text-lg font-black text-gray-900">Manage Cities Database</h3>
+                <h3 className="text-xl font-black text-gray-900">Manage Cities Database</h3>
                 <p className="text-xs text-gray-500 mt-0.5">Search existing destinations or add new ones to your system cities list.</p>
               </div>
               <button onClick={() => setIsCityModalOpen(false)} className="text-gray-400 hover:text-gray-600">
@@ -1033,20 +1029,20 @@ export default function TripDetails() {
             <div className="flex flex-col sm:flex-row justify-between items-center gap-4 border-b border-gray-50 pb-4">
               <div className="relative w-full sm:max-w-xs text-gray-700">
                 <span className="absolute inset-y-0 left-0 flex items-center pl-3">
-                  <Search className="h-4 w-4 text-gray-400" />
+                  <Search className="h-4.5 w-4.5 text-gray-400" />
                 </span>
                 <input
                   type="text"
                   placeholder="Search city by name..."
                   value={citySearchQuery}
                   onChange={(e) => setCitySearchQuery(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-xl text-xs bg-white focus:outline-none"
+                  className="w-full pl-9 pr-4 py-2.5 border border-gray-300 rounded-xl text-xs bg-white focus:outline-none font-medium"
                 />
               </div>
               <button
                 type="button"
                 onClick={() => setIsAddingCity(!isAddingCity)}
-                className="w-full sm:w-auto px-4 py-2 bg-gradient-to-r from-primary-500 to-amber-500 text-white font-bold text-xs rounded-full shadow"
+                className="w-full sm:w-auto px-5 py-2.5 bg-gradient-to-r from-primary-500 to-amber-500 text-white font-bold text-xs rounded-full shadow"
               >
                 {isAddingCity ? 'Cancel' : '+ Add New City to DB'}
               </button>
@@ -1054,7 +1050,7 @@ export default function TripDetails() {
 
             {/* ADD CITY FORM PANEL */}
             {isAddingCity && (
-              <form onSubmit={handleAddCity} className="bg-gray-50 p-5 rounded-2xl border border-gray-150 space-y-4 animate-fade-in">
+              <form onSubmit={handleAddCity} className="bg-gray-50 p-6 rounded-2xl border border-gray-150 space-y-4 animate-fade-in">
                 <h4 className="font-extrabold text-sm text-gray-900">New City Registration Form</h4>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div>
@@ -1065,7 +1061,7 @@ export default function TripDetails() {
                       value={newCityName}
                       onChange={(e) => setNewCityName(e.target.value)}
                       placeholder="e.g. London"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs bg-white font-medium"
+                      className="w-full px-3.5 py-2.5 border border-gray-300 rounded-lg text-xs bg-white font-medium"
                     />
                   </div>
                   <div>
@@ -1076,7 +1072,7 @@ export default function TripDetails() {
                       value={newCityCountry}
                       onChange={(e) => setNewCityCountry(e.target.value)}
                       placeholder="e.g. UK"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs bg-white font-medium"
+                      className="w-full px-3.5 py-2.5 border border-gray-300 rounded-lg text-xs bg-white font-medium"
                     />
                   </div>
                   <div>
@@ -1086,7 +1082,7 @@ export default function TripDetails() {
                       value={newCityRegion}
                       onChange={(e) => setNewCityRegion(e.target.value)}
                       placeholder="e.g. Europe"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs bg-white font-medium"
+                      className="w-full px-3.5 py-2.5 border border-gray-300 rounded-lg text-xs bg-white font-medium"
                     />
                   </div>
                 </div>
@@ -1117,7 +1113,7 @@ export default function TripDetails() {
                       max="100"
                       value={newCityPopularity}
                       onChange={(e) => setNewCityPopularity(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs bg-white"
+                      className="w-full px-3.5 py-2.5 border border-gray-300 rounded-lg text-xs bg-white font-semibold"
                     />
                   </div>
                   <div>
@@ -1127,7 +1123,7 @@ export default function TripDetails() {
                       value={newCityImageUrl}
                       onChange={(e) => setNewCityImageUrl(e.target.value)}
                       placeholder="https://images..."
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs bg-white"
+                      className="w-full px-3.5 py-2.5 border border-gray-300 rounded-lg text-xs bg-white font-semibold"
                     />
                   </div>
                 </div>
@@ -1135,7 +1131,7 @@ export default function TripDetails() {
                 <div className="flex justify-end gap-2 pt-2">
                   <button
                     type="submit"
-                    className="px-4 py-2 bg-gray-800 hover:bg-gray-900 text-white rounded-lg text-xs font-bold shadow"
+                    className="px-5 py-2.5 bg-gray-800 hover:bg-gray-900 text-white rounded-lg text-xs font-bold shadow"
                   >
                     Register City to Database
                   </button>
@@ -1150,8 +1146,8 @@ export default function TripDetails() {
               ) : (
                 filteredCitiesSearch.map((c) => (
                   <div key={c.id} className="p-3.5 flex justify-between items-center gap-4 hover:bg-gray-50/50">
-                    <div className="flex items-center gap-3">
-                      <img src={c.image_url} alt={c.name} className="w-10 h-10 rounded-lg object-cover border shrink-0" />
+                    <div className="flex items-center gap-3.5">
+                      <img src={c.image_url} alt={c.name} className="w-12 h-12 rounded-lg object-cover border shrink-0" />
                       <div>
                         <span className="font-bold text-sm text-gray-900 block leading-tight">{c.name}, {c.country}</span>
                         {c.region && <span className="text-[10px] text-gray-450 font-bold uppercase tracking-wider">{c.region}</span>}
@@ -1160,10 +1156,10 @@ export default function TripDetails() {
                     
                     <div className="flex items-center gap-4 shrink-0 text-xs font-extrabold text-gray-500">
                       <span className="flex items-center text-amber-500">
-                        <Star className="h-3.5 w-3.5 fill-amber-500 mr-1" /> {c.popularity}
+                        <Star className="h-4 w-4 fill-amber-500 mr-1" /> {c.popularity}
                       </span>
                       <span className="flex items-center text-teal-650">
-                        <BarChart3 className="h-3.5 w-3.5 mr-1" /> Cost: {c.cost_index}
+                        <BarChart3 className="h-4 w-4 mr-1" /> Cost: {c.cost_index}
                       </span>
                     </div>
                   </div>
@@ -1175,7 +1171,7 @@ export default function TripDetails() {
               <button
                 type="button"
                 onClick={() => setIsCityModalOpen(false)}
-                className="px-5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-full text-xs"
+                className="px-6 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-full text-xs"
               >
                 Close Database Panel
               </button>
@@ -1216,7 +1212,7 @@ export default function TripDetails() {
                 <select
                   value={selectedCityId}
                   onChange={(e) => setSelectedCityId(e.target.value)}
-                  className="w-full px-3.5 py-2.5 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 text-sm font-semibold"
+                  className="w-full px-3.5 py-3 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 text-sm font-semibold"
                 >
                   {citiesList.map((city) => (
                     <option key={city.id} value={city.id}>
@@ -1253,13 +1249,13 @@ export default function TripDetails() {
                 <button
                   type="button"
                   onClick={() => setIsStopModalOpen(false)}
-                  className="px-4 py-2 border border-gray-350 rounded-lg text-xs font-semibold text-gray-700 bg-white hover:bg-gray-50"
+                  className="px-5 py-2.5 border border-gray-350 rounded-lg text-xs font-semibold text-gray-700 bg-white hover:bg-gray-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 border border-transparent rounded-lg text-xs font-bold text-white bg-primary-500 hover:bg-primary-600 shadow shadow-primary-500/10"
+                  className="px-5 py-2.5 border border-transparent rounded-lg text-xs font-bold text-white bg-primary-500 hover:bg-primary-600 shadow shadow-primary-500/10"
                 >
                   Add Stop
                 </button>
@@ -1293,7 +1289,7 @@ export default function TripDetails() {
                   min={trip.stops.find(s => s.id === selectedStopIdForActivity)?.start_date}
                   max={trip.stops.find(s => s.id === selectedStopIdForActivity)?.end_date}
                   onChange={(e) => setActivityDate(e.target.value)}
-                  className="w-full px-3.5 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 text-sm bg-white"
+                  className="w-full px-3.5 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 text-sm bg-white"
                 />
               </div>
 
@@ -1327,7 +1323,7 @@ export default function TripDetails() {
                     required={activitySource === 'preset'}
                     value={selectedActivityId}
                     onChange={(e) => setSelectedActivityId(e.target.value)}
-                    className="w-full px-3.5 py-2.5 border border-gray-300 rounded-lg bg-white focus:outline-none text-sm font-semibold"
+                    className="w-full px-3.5 py-3 border border-gray-300 rounded-lg bg-white focus:outline-none text-sm font-semibold"
                   >
                     <option value="">-- Choose Activity --</option>
                     {MASTER_ACTIVITIES.filter(act => act.city_id === trip.stops.find(s => s.id === selectedStopIdForActivity)?.city_id).map((act) => (
@@ -1393,7 +1389,7 @@ export default function TripDetails() {
                     required
                     value={activityStartTime}
                     onChange={(e) => setActivityStartTime(e.target.value)}
-                    className="w-full px-3.5 py-2.5 border border-gray-300 rounded-lg text-sm bg-white"
+                    className="w-full px-3.5 py-3 border border-gray-300 rounded-lg text-sm bg-white"
                   />
                 </div>
                 <div>
@@ -1403,7 +1399,7 @@ export default function TripDetails() {
                     required
                     value={activityEndTime}
                     onChange={(e) => setActivityEndTime(e.target.value)}
-                    className="w-full px-3.5 py-2.5 border border-gray-300 rounded-lg text-sm bg-white"
+                    className="w-full px-3.5 py-3 border border-gray-300 rounded-lg text-sm bg-white"
                   />
                 </div>
               </div>
@@ -1412,13 +1408,13 @@ export default function TripDetails() {
                 <button
                   type="button"
                   onClick={() => setIsActivityModalOpen(false)}
-                  className="px-4 py-2 border border-gray-350 rounded-lg text-xs font-semibold text-gray-700 bg-white hover:bg-gray-50"
+                  className="px-5 py-2.5 border border-gray-350 rounded-lg text-xs font-semibold text-gray-700 bg-white hover:bg-gray-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 border border-transparent rounded-lg text-xs font-bold text-white bg-primary-500 hover:bg-primary-600 shadow shadow-primary-500/10"
+                  className="px-5 py-2.5 border border-transparent rounded-lg text-xs font-bold text-white bg-primary-500 hover:bg-primary-600 shadow shadow-primary-500/10"
                 >
                   Schedule Activity
                 </button>
