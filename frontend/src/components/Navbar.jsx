@@ -16,7 +16,7 @@ export default function Navbar() {
 
   return (
     <nav className="bg-white border-b border-gray-100 sticky top-0 z-50 shadow-sm">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="w-full max-w-none px-6 md:px-12">
         <div className="flex justify-between h-20"> {/* Increased navbar height */}
           <div className="flex">
             <Link to="/" className="flex-shrink-0 flex items-center">
