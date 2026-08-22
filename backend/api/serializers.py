@@ -25,18 +25,48 @@ class TripsSerializer(serializers.ModelSerializer):
     def to_representation(self, instance):
         ret = super().to_representation(instance)
         
+        # Build all itinerary items for this trip
+        itinerary_qs = ItineraryItems.objects.filter(trip=instance).order_by('sort_order')
+        itinerary_list = []
+        for item in itinerary_qs:
+            itinerary_list.append({
+                "id": str(item.id),
+                "trip_id": str(instance.id),
+                "trip_stop_id": str(item.trip_stop.id) if item.trip_stop else "",
+                "activity_id": str(item.activity.id) if item.activity else "",
+                "date": item.date.isoformat() if item.date else None,
+                "start_time": item.start_time.strftime("%H:%M") if item.start_time else "10:00",
+                "end_time": item.end_time.strftime("%H:%M") if item.end_time else "12:00",
+                "sort_order": item.sort_order,
+                "activity_detail": {
+                    "id": str(item.activity.id) if item.activity else "",
+                    "name": item.activity.name if item.activity else "",
+                    "description": item.activity.description if item.activity else "",
+                    "activity_type": item.activity.activity_type if item.activity else "Sightseeing",
+                    "duration_minutes": item.activity.duration_minutes if item.activity else 60,
+                    "estimated_cost": float(item.activity.estimated_cost) if item.activity else 0
+                } if item.activity else None
+            })
+        ret['itinerary_items'] = itinerary_list
+
         stops_qs = TripStops.objects.filter(trip=instance).order_by('stop_order')
         stops_list = []
         for stop in stops_qs:
-            activities_qs = ItineraryItems.objects.filter(trip_stop=stop).order_by('sort_order')
-            activities_names = [item.activity.name for item in activities_qs if item.activity]
+            stop_itinerary = [item for item in itinerary_list if item["trip_stop_id"] == str(stop.id)]
+            activities_names = [item["activity_detail"]["name"] for item in stop_itinerary if item["activity_detail"]]
             stops_list.append({
                 "id": str(stop.id),
-                "city": stop.city.name if stop.city else "",
-                "country": stop.city.country if stop.city else "",
+                "city_id": str(stop.city.id) if stop.city else "",
+                "city": {
+                    "id": str(stop.city.id) if stop.city else "",
+                    "name": stop.city.name if stop.city else "",
+                    "country": stop.city.country if stop.city else ""
+                } if stop.city else None,
                 "start_date": stop.start_date.isoformat() if stop.start_date else None,
                 "end_date": stop.end_date.isoformat() if stop.end_date else None,
-                "activities": activities_names
+                "stop_order": stop.stop_order,
+                "activities": activities_names,
+                "itinerary_items": stop_itinerary
             })
         ret['stops'] = stops_list
 
@@ -47,7 +77,9 @@ class TripsSerializer(serializers.ModelSerializer):
                 "id": str(exp.id),
                 "title": exp.description or exp.category,
                 "amount": float(exp.amount),
-                "category": exp.category
+                "category": exp.category,
+                "expense_date": exp.expense_date.isoformat() if exp.expense_date else None,
+                "trip_stop_id": str(exp.trip_stop.id) if exp.trip_stop else None
             })
         ret['expenses'] = expenses_list
         return ret
@@ -57,20 +89,41 @@ class TripsSerializer(serializers.ModelSerializer):
         request = self.context.get('request')
         
         if request and request.data:
+            temp_to_db_stop_ids = {}
+            
             if 'stops' in request.data:
                 new_stops_data = request.data['stops']
                 keep_stop_ids = []
                 for order, stop_data in enumerate(new_stops_data, start=1):
                     stop_id_val = stop_data.get('id')
-                    city_name = stop_data.get('city')
-                    country_name = stop_data.get('country', 'Unknown')
-                    s_date = stop_data.get('start_date') or instance.start_date
-                    e_date = stop_data.get('end_date') or instance.end_date
+                    city_id_val = stop_data.get('city_id')
+                    city_data = stop_data.get('city')
+                    
+                    city_obj = None
+                    if city_id_val and not str(city_id_val).startswith('17'):
+                        try:
+                            city_obj = Cities.objects.get(id=int(city_id_val))
+                        except (ValueError, Cities.DoesNotExist):
+                            pass
+                            
+                    if not city_obj:
+                        city_name = ""
+                        country_name = "Unknown"
+                        
+                        if isinstance(city_data, dict):
+                            city_name = city_data.get('name', '')
+                            country_name = city_data.get('country', 'Unknown')
+                        elif isinstance(city_data, str):
+                            city_name = city_data
+                            country_name = stop_data.get('country', 'Unknown')
+                            
+                        if not city_name:
+                            city_name = "Unknown"
 
-                    city_obj, _ = Cities.objects.get_or_create(
-                        name=city_name,
-                        defaults={'country': country_name}
-                    )
+                        city_obj, _ = Cities.objects.get_or_create(
+                            name=city_name,
+                            defaults={'country': country_name}
+                        )
 
                     stop_obj = None
                     if stop_id_val and not str(stop_id_val).startswith('17'):
@@ -78,6 +131,9 @@ class TripsSerializer(serializers.ModelSerializer):
                             stop_obj = TripStops.objects.get(id=int(stop_id_val), trip=instance)
                         except (ValueError, TripStops.DoesNotExist):
                             pass
+
+                    s_date = stop_data.get('start_date') or instance.start_date
+                    e_date = stop_data.get('end_date') or instance.end_date
 
                     if stop_obj:
                         stop_obj.city = city_obj
@@ -94,24 +150,86 @@ class TripsSerializer(serializers.ModelSerializer):
                             stop_order=order
                         )
                     keep_stop_ids.append(stop_obj.id)
-
-                    ItineraryItems.objects.filter(trip_stop=stop_obj).delete()
-                    activities_list = stop_data.get('activities', [])
-                    for idx, act_name in enumerate(activities_list, start=1):
-                        act_obj, _ = Activities.objects.get_or_create(
-                            city=city_obj,
-                            name=act_name
-                        )
-                        ItineraryItems.objects.create(
-                            trip=instance,
-                            trip_stop=stop_obj,
-                            activity=act_obj,
-                            date=stop_obj.start_date,
-                            sort_order=idx
-                        )
+                    if stop_id_val:
+                        temp_to_db_stop_ids[str(stop_id_val)] = stop_obj
 
                 TripStops.objects.filter(trip=instance).exclude(id__in=keep_stop_ids).delete()
 
+            # Update Itinerary Items
+            if 'itinerary_items' in request.data:
+                new_items_data = request.data['itinerary_items']
+                keep_item_ids = []
+                for item_data in new_items_data:
+                    item_id_val = item_data.get('id')
+                    stop_id_val = item_data.get('trip_stop_id')
+                    act_id_val = item_data.get('activity_id')
+                    date_val = item_data.get('date') or instance.start_date
+                    start_time_val = item_data.get('start_time') or "10:00"
+                    end_time_val = item_data.get('end_time') or "12:00"
+                    order_val = item_data.get('sort_order', 1)
+                    
+                    stop_obj = temp_to_db_stop_ids.get(str(stop_id_val))
+                    if not stop_obj and stop_id_val and not str(stop_id_val).startswith('17'):
+                        try:
+                            stop_obj = TripStops.objects.get(id=int(stop_id_val), trip=instance)
+                        except (ValueError, TripStops.DoesNotExist):
+                            pass
+                            
+                    if not stop_obj:
+                        continue
+                        
+                    act_detail = item_data.get('activity_detail') or {}
+                    act_name = act_detail.get('name') or item_data.get('activity_name') or "Sightseeing"
+                    act_type = act_detail.get('activity_type') or "Sightseeing"
+                    act_cost = act_detail.get('estimated_cost') or 0
+                    
+                    act_obj = None
+                    if act_id_val and not str(act_id_val).startswith('preset') and not str(act_id_val).startswith('custom'):
+                        try:
+                            act_obj = Activities.objects.get(id=int(act_id_val))
+                        except (ValueError, Activities.DoesNotExist):
+                            pass
+                            
+                    if not act_obj:
+                        act_obj, _ = Activities.objects.get_or_create(
+                            city=stop_obj.city,
+                            name=act_name,
+                            defaults={
+                                'activity_type': act_type,
+                                'estimated_cost': act_cost
+                            }
+                        )
+
+                    item_obj = None
+                    if item_id_val and not str(item_id_val).startswith('17'):
+                        try:
+                            item_obj = ItineraryItems.objects.get(id=int(item_id_val), trip_stop__trip=instance)
+                        except (ValueError, ItineraryItems.DoesNotExist):
+                            pass
+
+                    if item_obj:
+                        item_obj.trip_stop = stop_obj
+                        item_obj.activity = act_obj
+                        item_obj.date = date_val
+                        item_obj.start_time = start_time_val
+                        item_obj.end_time = end_time_val
+                        item_obj.sort_order = order_val
+                        item_obj.save()
+                    else:
+                        item_obj = ItineraryItems.objects.create(
+                            trip=instance,
+                            trip_stop=stop_obj,
+                            activity=act_obj,
+                            date=date_val,
+                            start_time=start_time_val,
+                            end_time=end_time_val,
+                            sort_order=order_val
+                        )
+                    keep_item_ids.append(item_obj.id)
+                
+                ItineraryItems.objects.filter(trip=instance).exclude(id__in=keep_item_ids).delete()
+
+            # Update expenses
             if 'expenses' in request.data:
                 new_expenses_data = request.data['expenses']
                 keep_expense_ids = []
@@ -120,9 +238,18 @@ class TripsSerializer(serializers.ModelSerializer):
                     title = exp_data.get('title')
                     amount = exp_data.get('amount')
                     category = exp_data.get('category', 'Other')
+                    s_date_val = exp_data.get('expense_date') or instance.start_date
+                    stop_id_val = exp_data.get('trip_stop_id')
+
+                    stop_obj = temp_to_db_stop_ids.get(str(stop_id_val))
+                    if not stop_obj and stop_id_val and not str(stop_id_val).startswith('17'):
+                        try:
+                            stop_obj = TripStops.objects.get(id=int(stop_id_val), trip=instance)
+                        except (ValueError, TripStops.DoesNotExist):
+                            pass
 
                     exp_obj = None
-                    if exp_id_val and not str(exp_id_val).startswith('17'):
+                    if exp_id_val and not str(exp_id_val).startswith('activity_exp_') and not str(exp_id_val).startswith('17'):
                         try:
                             exp_obj = Expenses.objects.get(id=int(exp_id_val), trip=instance)
                         except (ValueError, Expenses.DoesNotExist):
@@ -132,13 +259,17 @@ class TripsSerializer(serializers.ModelSerializer):
                         exp_obj.amount = amount
                         exp_obj.category = category
                         exp_obj.description = title
+                        exp_obj.expense_date = s_date_val
+                        exp_obj.trip_stop = stop_obj
                         exp_obj.save()
                     else:
                         exp_obj = Expenses.objects.create(
                             trip=instance,
                             amount=amount,
                             category=category,
-                            description=title
+                            description=title,
+                            expense_date=s_date_val,
+                            trip_stop=stop_obj
                         )
                     keep_expense_ids.append(exp_obj.id)
 
