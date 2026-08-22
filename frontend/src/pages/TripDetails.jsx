@@ -63,6 +63,7 @@ export default function TripDetails() {
   const [expenseAmount, setExpenseAmount] = useState('');
   const [expenseCategory, setExpenseCategory] = useState('Transport');
   const [copied, setCopied] = useState(false);
+  const [quickStopCityId, setQuickStopCityId] = useState('');
 
   useEffect(() => {
     const loadedTrip = getTrip(id);
@@ -338,6 +339,38 @@ export default function TripDetails() {
     }
   };
 
+  const handleInstantAddActivity = (stopId, stopDate, actId, actName, actCost) => {
+    const newItem = {
+      id: Date.now().toString(),
+      trip_stop_id: stopId,
+      activity_id: actId,
+      date: stopDate,
+      start_time: '10:00',
+      end_time: '12:00',
+      sort_order: (trip.itinerary_items ? trip.itinerary_items.filter(item => item.date === stopDate).length : 0) + 1
+    };
+
+    const updatedItems = [...(trip.itinerary_items || []), newItem];
+    
+    const newExpense = {
+      id: 'activity_exp_' + newItem.id,
+      trip_id: id,
+      trip_stop_id: stopId,
+      category: 'Activities',
+      description: actName,
+      amount: actCost,
+      expense_date: stopDate
+    };
+    
+    const updatedExpenses = [...(trip.expenses || []), newExpense];
+
+    saveTripState({ 
+      ...trip, 
+      itinerary_items: updatedItems,
+      expenses: updatedExpenses
+    });
+  };
+
   const handleAddCustomActivity = (e) => {
     e.preventDefault();
     const newActId = editingActivityId 
@@ -578,6 +611,34 @@ export default function TripDetails() {
               </button>
             </div>
 
+            {/* Inline Quick Stop Adder */}
+            <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex flex-wrap gap-4 items-center mb-2">
+              <span className="text-xs text-gray-550 font-black uppercase tracking-wider">Quick Stop Adder:</span>
+              <select
+                value={quickStopCityId}
+                onChange={(e) => setQuickStopCityId(e.target.value)}
+                className="px-4 py-2.5 border border-gray-300 rounded-xl text-xs bg-white font-semibold text-gray-800 focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none"
+              >
+                <option value="">-- Choose City Destination --</option>
+                {citiesList.map(c => (
+                  <option key={c.id} value={c.id}>{c.name}, {c.country} ({c.region})</option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={() => {
+                  if (quickStopCityId) {
+                    handleAddStopByCityId(quickStopCityId);
+                    setQuickStopCityId('');
+                  }
+                }}
+                disabled={!quickStopCityId}
+                className="px-5 py-2.5 bg-primary-500 hover:bg-primary-600 text-white rounded-xl text-xs font-black shadow-sm disabled:opacity-40 transition-colors"
+              >
+                + Instant Add Stop
+              </button>
+            </div>
+
             <div className="space-y-6 relative before:absolute before:inset-y-2 before:left-[19px] before:w-0.5 before:bg-gradient-to-b before:from-primary-500 before:to-amber-500">
               {(!trip.stops || trip.stops.length === 0) ? (
                 <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center text-gray-500 italic shadow-sm ml-6 text-base">
@@ -631,6 +692,41 @@ export default function TripDetails() {
                             </button>
                           </div>
                         </div>
+
+                        {/* One-Click Recommended Activities Inspiration */}
+                        {(() => {
+                          const cityPresets = MASTER_ACTIVITIES.filter(act => act.city_id === stop.city_id);
+                          if (cityPresets.length === 0) return null;
+                          return (
+                            <div className="mt-4 bg-primary-50/20 p-4 rounded-xl border border-primary-100/30">
+                              <span className="text-[10px] text-primary-850 font-black uppercase tracking-widest block mb-2">
+                                Spark Inspiration: One-click Add Recommended Activities in {city?.name || 'City'}:
+                              </span>
+                              <div className="flex flex-wrap gap-2">
+                                {cityPresets.map(preset => {
+                                  const isScheduled = stopActivities.some(sa => sa.activity_id === preset.id);
+                                  return (
+                                    <button
+                                      key={preset.id}
+                                      type="button"
+                                      disabled={isScheduled}
+                                      onClick={() => handleInstantAddActivity(stop.id, stop.start_date, preset.id, preset.name, preset.estimated_cost)}
+                                      className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all border flex items-center gap-1.5 ${
+                                        isScheduled
+                                          ? 'bg-emerald-50 border-emerald-150 text-emerald-700 font-extrabold cursor-not-allowed'
+                                          : 'bg-white hover:bg-primary-50 border-gray-250 text-gray-700 hover:border-primary-300'
+                                      }`}
+                                    >
+                                      <span>{preset.name}</span>
+                                      <span className="text-[10px] text-gray-400 font-bold">({preset.activity_type} - ₹{preset.estimated_cost})</span>
+                                      <span className="font-extrabold">{isScheduled ? '✓ Added' : '+ Add'}</span>
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          );
+                        })()}
 
                         {/* Activities Checklist */}
                         <div className="mt-6 border-t border-gray-100 pt-5">
