@@ -33,11 +33,17 @@ export default function Profile() {
 
     const activeProfile = getUserProfile();
     if (activeProfile) {
-      setProfile(activeProfile);
-      setName(activeProfile.name);
-      setEmail(activeProfile.email);
-      setPhotoUrl(activeProfile.photo_url || '');
-      setLanguage(activeProfile.language || 'English');
+      const mergedProfile = {
+        ...activeProfile,
+        name: authData.name || activeProfile.name,
+        email: authData.email || activeProfile.email,
+        photo_url: authData.profile_image || activeProfile.photo_url
+      };
+      setProfile(mergedProfile);
+      setName(mergedProfile.name);
+      setEmail(mergedProfile.email);
+      setPhotoUrl(mergedProfile.photo_url || '');
+      setLanguage(mergedProfile.language || 'English');
     }
     setCitiesList(getCities());
   }, [isLoggedIn, navigate]);
