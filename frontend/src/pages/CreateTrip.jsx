@@ -28,7 +28,7 @@ export default function CreateTrip() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-8">
+    <div className="max-w-4xl mx-auto py-2">
       {/* Back Link */}
       <button 
         onClick={() => navigate(-1)}

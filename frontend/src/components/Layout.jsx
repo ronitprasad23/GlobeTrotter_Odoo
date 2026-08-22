@@ -1,18 +1,32 @@
-﻿import React from 'react';
-import { Outlet } from 'react-router-dom';
+import React from 'react';
+import { Outlet, useLocation } from 'react-router-dom';
 import Navbar from './Navbar';
 
 export default function Layout() {
+  const location = useLocation();
+  const isFullWidthPage = 
+    location.pathname === '/' || 
+    location.pathname === '/login' || 
+    location.pathname === '/signup';
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col justify-between">
       <div>
         <Navbar />
-        <main className="py-6">
-          <Outlet />
-        </main>
+        {isFullWidthPage ? (
+          <main>
+            <Outlet />
+          </main>
+        ) : (
+          <main className="py-8">
+            <div className="app-container">
+              <Outlet />
+            </div>
+          </main>
+        )}
       </div>
-      <footer className="bg-white border-t border-gray-200 py-6">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-sm text-gray-500">
+      <footer className="bg-white border-t border-gray-250 py-6 mt-8">
+        <div className="app-container text-center text-sm text-gray-500 font-semibold">
           &copy; {new Date().getFullYear()} GlobeTrotter. All rights reserved.
         </div>
       </footer>

@@ -1,10 +1,10 @@
-﻿import React from 'react';
+import React from 'react';
 import { User, Settings, Shield } from 'lucide-react';
 
 export default function Profile() {
   const user = {
-    name: 'Zara Smith',
-    email: 'zara.smith@example.com',
+    name: 'Zara Shukla',
+    email: 'zara.shukla@example.com',
     joined: 'August 2026',
     preferences: {
       currency: 'INR (₹)',
@@ -14,7 +14,7 @@ export default function Profile() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8">
+    <div className="w-full py-2">
       <h1 className="text-3xl font-bold text-gray-900 mb-8">User Profile</h1>
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

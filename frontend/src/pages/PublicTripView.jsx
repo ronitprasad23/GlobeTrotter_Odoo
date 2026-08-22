@@ -43,7 +43,7 @@ export default function PublicTripView() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="app-container py-8">
       <div className="flex justify-between items-center mb-8 border-b border-gray-150 pb-4">
         <div className="flex items-center">
           <Compass className="h-8 w-8 text-primary-600 mr-2" />

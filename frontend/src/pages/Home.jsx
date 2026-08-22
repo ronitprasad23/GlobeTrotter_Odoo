@@ -60,7 +60,7 @@ export default function Home() {
         </div>
       </div>
 
-      <div className="max-w-[90rem] mx-auto px-6 lg:px-12 -mt-16 relative z-10"> {/* Expanded container width */}
+      <div className="app-container -mt-16 relative z-10">
         {/* Stats Row */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
           <div className="bg-white p-8 rounded-2xl border border-gray-100 shadow-md flex items-center hover:translate-y-[-2px] transition-transform duration-200">

@@ -328,7 +328,7 @@ export default function TripDetails() {
   );
 
   return (
-    <div className="max-w-[90rem] mx-auto px-6 lg:px-12 py-8"> {/* Expanded screen container width */}
+    <div className="w-full py-2">
       {/* Back Link */}
       <Link to="/trips" className="inline-flex items-center text-base font-bold text-gray-500 hover:text-primary-500 transition-colors mb-6">
         <ArrowLeft className="h-5 w-5 mr-1.5" /> Back to My Trips

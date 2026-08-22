@@ -72,7 +72,7 @@ export default function MyTrips() {
   };
 
   return (
-    <div className="max-w-[90rem] mx-auto px-6 lg:px-12 py-10 min-h-[75vh]"> {/* Expanded container width */}
+    <div className="w-full py-4 min-h-[75vh]">
       {/* Page Title & CTA */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
         <div>
