@@ -6,9 +6,9 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
-from .models import Users, Trips
+from .models import Users, Trips, Cities, TripStops
 from .utils import generate_jwt_token
-from .serializers import TripsSerializer
+from .serializers import TripsSerializer, CitiesSerializer, TripStopsSerializer
 
 @api_view(['GET'])
 @permission_classes([AllowAny])
@@ -170,5 +170,52 @@ def public_trip_detail_view(request, pk):
 
     serializer = TripsSerializer(trip)
     return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def cities_list_view(request):
+    cities = Cities.objects.all().order_by('name')
+    serializer = CitiesSerializer(cities, many=True)
+    return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def trip_stops_list_create_view(request, trip_id):
+    try:
+        trip = Trips.objects.get(pk=trip_id, user=request.user)
+    except Trips.DoesNotExist:
+        return Response({"error": "Trip not found"}, status=status.HTTP_404_NOT_FOUND)
+
+    serializer = TripStopsSerializer(data=request.data)
+    if serializer.is_valid():
+        serializer.save(trip=trip)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['PUT', 'DELETE'])
+@permission_classes([IsAuthenticated])
+def trip_stops_detail_view(request, trip_id, stop_id):
+    try:
+        trip = Trips.objects.get(pk=trip_id, user=request.user)
+    except Trips.DoesNotExist:
+        return Response({"error": "Trip not found"}, status=status.HTTP_404_NOT_FOUND)
+
+    try:
+        stop = TripStops.objects.get(pk=stop_id, trip=trip)
+    except TripStops.DoesNotExist:
+        return Response({"error": "Trip stop not found"}, status=status.HTTP_404_NOT_FOUND)
+
+    if request.method == 'PUT':
+        serializer = TripStopsSerializer(stop, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    elif request.method == 'DELETE':
+        stop.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 

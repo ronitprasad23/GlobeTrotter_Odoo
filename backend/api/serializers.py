@@ -145,3 +145,64 @@ class TripsSerializer(serializers.ModelSerializer):
                 Expenses.objects.filter(trip=instance).exclude(id__in=keep_expense_ids).delete()
 
         return instance
+
+
+class CitiesSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Cities
+        fields = ['id', 'name', 'country', 'region', 'cost_index', 'popularity', 'image_url']
+
+
+class TripStopsSerializer(serializers.ModelSerializer):
+    city = serializers.PrimaryKeyRelatedField(queryset=Cities.objects.all(), required=False, allow_null=True)
+    city_detail = CitiesSerializer(source='city', read_only=True)
+    city_name = serializers.CharField(write_only=True, required=False)
+    country_name = serializers.CharField(write_only=True, required=False)
+
+    class Meta:
+        model = TripStops
+        fields = ['id', 'trip', 'city', 'city_detail', 'city_name', 'country_name', 'start_date', 'end_date', 'stop_order']
+        read_only_fields = ['id', 'trip']
+
+    def validate(self, data):
+        start_date = data.get('start_date')
+        end_date = data.get('end_date')
+
+        if start_date is None and self.instance:
+            start_date = self.instance.start_date
+        if end_date is None and self.instance:
+            end_date = self.instance.end_date
+
+        if start_date and end_date and end_date < start_date:
+            raise serializers.ValidationError("End date must be greater than or equal to start date.")
+        return data
+
+    def create(self, validated_data):
+        city_name = validated_data.pop('city_name', None)
+        country_name = validated_data.pop('country_name', 'Unknown')
+        city = validated_data.get('city')
+
+        if city_name:
+            city, _ = Cities.objects.get_or_create(
+                name=city_name,
+                defaults={'country': country_name}
+            )
+            validated_data['city'] = city
+
+        if not validated_data.get('city'):
+            raise serializers.ValidationError({"city": "This field or city_name is required."})
+
+        return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+        city_name = validated_data.pop('city_name', None)
+        country_name = validated_data.pop('country_name', 'Unknown')
+        
+        if city_name:
+            city, _ = Cities.objects.get_or_create(
+                name=city_name,
+                defaults={'country': country_name}
+            )
+            validated_data['city'] = city
+
+        return super().update(instance, validated_data)
