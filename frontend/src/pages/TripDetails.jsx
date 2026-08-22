@@ -1,43 +1,56 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { getTrip, updateTrip } from '../utils/storage';
+import { getTrip, updateTrip, MASTER_CITIES, MASTER_ACTIVITIES } from '../utils/storage';
 import { 
-  Calendar, MapPin, IndianRupee, ArrowLeft, Plus, 
-  Trash2, Clipboard, ClipboardCheck, AlertTriangle, Info, Clock, CheckSquare
+  Calendar as CalendarIcon, MapPin, IndianRupee, ArrowLeft, Plus, 
+  Trash2, Clipboard, ClipboardCheck, AlertTriangle, Info, Clock, CheckSquare,
+  ArrowUp, ArrowDown, List, Calendar, HelpCircle
 } from 'lucide-react';
-
-const POPULAR_CITIES = [
-  { name: 'Paris', country: 'France', activities: ['Eiffel Tower Climb', 'Louvre Museum Tour', 'Seine River Cruise', 'Notre-Dame Cathedral'] },
-  { name: 'Tokyo', country: 'Japan', activities: ['Shibuya Crossing', 'Senso-ji Temple', 'TeamLab Planets', 'Mount Fuji Day Tour'] },
-  { name: 'Goa', country: 'India', activities: ['Anjuna Beach Sunset', 'Baga Water Sports', 'Fort Aguada Visit', 'Dudhsagar Falls Trek'] },
-  { name: 'Rome', country: 'Italy', activities: ['Colosseum Tour', 'Vatican City Visit', 'Trevi Fountain Wish', 'Pantheon Exploration'] },
-  { name: 'Mumbai', country: 'India', activities: ['Gateway of India', 'Marine Drive Walk', 'Elephanta Caves', 'Haji Ali Dargah'] },
-  { name: 'New York', country: 'USA', activities: ['Statue of Liberty', 'Central Park Walk', 'Times Square Lights', 'Empire State Building'] },
-  { name: 'London', country: 'UK', activities: ['Tower of London', 'London Eye Flight', 'British Museum Tour', 'Big Ben Photo'] }
-];
 
 export default function TripDetails() {
   const { id } = useParams();
   const [trip, setTrip] = useState(null);
-  const [activeTab, setActiveTab] = useState('itinerary');
   
+  // Navigation tabs: 'builder', 'view', 'budget', 'share'
+  const [activeTab, setActiveTab] = useState('builder');
+  // Itinerary View toggle: 'list' vs 'calendar'
+  const [viewMode, setViewMode] = useState('list');
+  const [selectedCalendarDate, setSelectedCalendarDate] = useState(null);
+
+  // Add Stop Modal States
   const [isStopModalOpen, setIsStopModalOpen] = useState(false);
-  const [citySearch, setCitySearch] = useState('');
-  const [selectedCityObj, setSelectedCityObj] = useState(null);
+  const [selectedCityId, setSelectedCityId] = useState(MASTER_CITIES[0].id);
   const [stopStartDate, setStopStartDate] = useState('');
   const [stopEndDate, setStopEndDate] = useState('');
-  const [customCountry, setCustomCountry] = useState('');
 
-  const [customActivityTexts, setCustomActivityTexts] = useState({});
+  // Add Itinerary Item Form States
+  const [selectedStopIdForActivity, setSelectedStopIdForActivity] = useState('');
+  const [isActivityModalOpen, setIsActivityModalOpen] = useState(false);
+  const [activityDate, setActivityDate] = useState('');
+  const [activitySource, setActivitySource] = useState('preset'); // 'preset' vs 'custom'
+  const [selectedActivityId, setSelectedActivityId] = useState('');
+  const [customActivityName, setCustomActivityName] = useState('');
+  const [customActivityType, setCustomActivityType] = useState('Sightseeing');
+  const [customActivityCost, setCustomActivityCost] = useState('0');
+  const [customActivityDuration, setCustomActivityDuration] = useState('60');
+  const [activityStartTime, setActivityStartTime] = useState('10:00');
+  const [activityEndTime, setActivityEndTime] = useState('12:00');
 
+  // Budget States
   const [expenseTitle, setExpenseTitle] = useState('');
   const [expenseAmount, setExpenseAmount] = useState('');
   const [expenseCategory, setExpenseCategory] = useState('Transport');
-
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    setTrip(getTrip(id));
+    const loadedTrip = getTrip(id);
+    if (loadedTrip) {
+      setTrip(loadedTrip);
+      if (loadedTrip.start_date) {
+        setActivityDate(loadedTrip.start_date);
+        setSelectedCalendarDate(loadedTrip.start_date);
+      }
+    }
   }, [id]);
 
   if (!trip) {
@@ -51,15 +64,27 @@ export default function TripDetails() {
     );
   }
 
-  const totalSpent = trip.expenses ? trip.expenses.reduce((sum, e) => sum + e.amount, 0) : 0;
-  const isOverBudget = totalSpent > trip.budget;
-  const remaining = trip.budget - totalSpent;
-
+  // Calculate Dates
   const startD = new Date(trip.start_date);
   const endD = new Date(trip.end_date);
-  const diffTime = Math.abs(endD - startD);
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-  const dailyAverage = diffDays > 0 ? (totalSpent / diffDays).toFixed(0) : 0;
+  const diffDays = Math.ceil(Math.abs(endD - startD) / (1000 * 60 * 60 * 24)) + 1;
+
+  // Generate Date Range Array
+  const getDateRange = () => {
+    const dates = [];
+    const current = new Date(trip.start_date);
+    while (current <= endD) {
+      dates.push(current.toISOString().split('T')[0]);
+      current.setDate(current.getDate() + 1);
+    }
+    return dates;
+  };
+  const tripDateList = getDateRange();
+
+  // Budget calculations
+  const totalSpent = (trip.expenses ? trip.expenses.reduce((sum, e) => sum + e.amount, 0) : 0);
+  const isOverBudget = totalSpent > trip.budget;
+  const remaining = trip.budget - totalSpent;
 
   const categories = ['Transport', 'Lodging', 'Food', 'Activities', 'Other'];
   const categoryTotals = categories.reduce((acc, cat) => {
@@ -72,69 +97,141 @@ export default function TripDetails() {
     updateTrip(id, updatedTrip);
   };
 
+  // 1. ADD TRIP STOP
   const handleAddStop = (e) => {
     e.preventDefault();
-    if (!citySearch) return;
+    if (!selectedCityId) return;
 
-    const cityName = selectedCityObj ? selectedCityObj.name : citySearch;
-    const countryName = selectedCityObj ? selectedCityObj.country : customCountry;
-
+    const stopOrder = (trip.stops ? trip.stops.length : 0) + 1;
     const newStop = {
       id: Date.now().toString(),
-      city: cityName,
-      country: countryName || 'Unknown',
+      city_id: selectedCityId,
       start_date: stopStartDate || trip.start_date,
       end_date: stopEndDate || trip.end_date,
-      activities: []
+      stop_order: stopOrder
     };
 
     const updatedStops = [...(trip.stops || []), newStop];
     saveTripState({ ...trip, stops: updatedStops });
 
     setIsStopModalOpen(false);
-    setCitySearch('');
-    setSelectedCityObj(null);
     setStopStartDate('');
     setStopEndDate('');
-    setCustomCountry('');
+  };
+
+  // 2. REORDER STOPS (Up/Down)
+  const moveStop = (index, direction) => {
+    const newStops = [...(trip.stops || [])];
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= newStops.length) return;
+
+    // Swap stop orders
+    const tempOrder = newStops[index].stop_order;
+    newStops[index].stop_order = newStops[targetIndex].stop_order;
+    newStops[targetIndex].stop_order = tempOrder;
+
+    // Re-sort
+    newStops.sort((a, b) => a.stop_order - b.stop_order);
+    saveTripState({ ...trip, stops: newStops });
   };
 
   const handleDeleteStop = (stopId) => {
-    const updatedStops = trip.stops.filter(s => s.id !== stopId);
-    saveTripState({ ...trip, stops: updatedStops });
+    const remainingStops = (trip.stops || []).filter(s => s.id !== stopId);
+    // Reset orders
+    const resetStops = remainingStops.map((s, idx) => ({ ...s, stop_order: idx + 1 }));
+    
+    // Filter itinerary items belonging to this deleted stop
+    const remainingItems = (trip.itinerary_items || []).filter(item => item.trip_stop_id !== stopId);
+    
+    saveTripState({ ...trip, stops: resetStops, itinerary_items: remainingItems });
   };
 
-  const handleAddActivity = (stopId, activityName) => {
-    const updatedStops = trip.stops.map(stop => {
-      if (stop.id === stopId) {
-        if (stop.activities.includes(activityName)) return stop;
-        return { ...stop, activities: [...stop.activities, activityName] };
-      }
-      return stop;
-    });
-    saveTripState({ ...trip, stops: updatedStops });
+  // 3. ADD ITINERARY ITEM
+  const handleOpenActivityModal = (stopId) => {
+    setSelectedStopIdForActivity(stopId);
+    const stop = trip.stops.find(s => s.id === stopId);
+    if (stop) {
+      setActivityDate(stop.start_date);
+    }
+    setIsActivityModalOpen(true);
   };
 
-  const handleAddCustomActivity = (e, stopId) => {
+  const handleAddItineraryItem = (e) => {
     e.preventDefault();
-    const text = customActivityTexts[stopId];
-    if (!text || !text.trim()) return;
+    
+    let activityIdToSave = '';
+    let finalEstCost = 0;
 
-    handleAddActivity(stopId, text.trim());
-    setCustomActivityTexts({ ...customActivityTexts, [stopId]: '' });
-  };
+    if (activitySource === 'preset') {
+      if (!selectedActivityId) return;
+      activityIdToSave = selectedActivityId;
+      const act = MASTER_ACTIVITIES.find(a => a.id === selectedActivityId);
+      if (act) finalEstCost = act.estimated_cost;
+    } else {
+      // Create a dynamic activity and save to master array simulation (local storage mock)
+      const newActId = 'custom_' + Date.now();
+      const newCustomAct = {
+        id: newActId,
+        city_id: trip.stops.find(s => s.id === selectedStopIdForActivity)?.city_id || '10',
+        name: customActivityName,
+        description: 'Custom activity',
+        activity_type: customActivityType,
+        duration_minutes: Number(customActivityDuration),
+        estimated_cost: Number(customActivityCost),
+        image_url: ''
+      };
+      MASTER_ACTIVITIES.push(newCustomAct); // Append in memory
+      activityIdToSave = newActId;
+      finalEstCost = Number(customActivityCost);
+    }
 
-  const handleDeleteActivity = (stopId, activityIndex) => {
-    const updatedStops = trip.stops.map(stop => {
-      if (stop.id === stopId) {
-        const activities = stop.activities.filter((_, idx) => idx !== activityIndex);
-        return { ...stop, activities };
-      }
-      return stop;
+    const newItem = {
+      id: Date.now().toString(),
+      trip_stop_id: selectedStopIdForActivity,
+      activity_id: activityIdToSave,
+      date: activityDate,
+      start_time: activityStartTime,
+      end_time: activityEndTime,
+      sort_order: (trip.itinerary_items ? trip.itinerary_items.filter(item => item.date === activityDate).length : 0) + 1
+    };
+
+    const updatedItems = [...(trip.itinerary_items || []), newItem];
+    
+    // Automatically log this as an expense under 'Activities'
+    const newExpense = {
+      id: 'activity_exp_' + newItem.id,
+      trip_id: id,
+      trip_stop_id: selectedStopIdForActivity,
+      category: 'Activities',
+      description: activitySource === 'preset' 
+        ? MASTER_ACTIVITIES.find(a => a.id === selectedActivityId)?.name || 'Activity'
+        : customActivityName,
+      amount: finalEstCost,
+      expense_date: activityDate
+    };
+    
+    const updatedExpenses = [...(trip.expenses || []), newExpense];
+
+    saveTripState({ 
+      ...trip, 
+      itinerary_items: updatedItems,
+      expenses: updatedExpenses
     });
-    saveTripState({ ...trip, stops: updatedStops });
+
+    setIsActivityModalOpen(false);
+    setSelectedActivityId('');
+    setCustomActivityName('');
+    setCustomActivityCost('0');
+    setCustomActivityDuration('60');
   };
 
+  const handleDeleteItineraryItem = (itemId) => {
+    const updatedItems = trip.itinerary_items.filter(item => item.id !== itemId);
+    const updatedExpenses = (trip.expenses || []).filter(exp => exp.id !== 'activity_exp_' + itemId);
+    saveTripState({ ...trip, itinerary_items: updatedItems, expenses: updatedExpenses });
+  };
+
+  // 4. ADD MANUAL EXPENSE
   const handleAddExpense = (e) => {
     e.preventDefault();
     if (!expenseTitle || !expenseAmount) return;
@@ -170,10 +267,6 @@ export default function TripDetails() {
     saveTripState({ ...trip, isPublic: !trip.isPublic });
   };
 
-  const filteredCities = citySearch 
-    ? POPULAR_CITIES.filter(c => c.name.toLowerCase().includes(citySearch.toLowerCase())) 
-    : [];
-
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
       {/* Back Link */}
@@ -183,14 +276,13 @@ export default function TripDetails() {
 
       {/* Main Banner Card */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 md:p-8 mb-8 relative overflow-hidden">
-        {/* Accent Top Bar */}
         <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-primary-500 to-amber-500"></div>
         
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
           <div>
             <h1 className="text-3xl md:text-4xl font-black text-gray-900 tracking-tight">{trip.name}</h1>
             <p className="text-gray-550 mt-2 flex items-center text-sm font-semibold">
-              <Calendar className="h-4 w-4 mr-2 text-primary-500" /> {trip.start_date} to {trip.end_date} 
+              <CalendarIcon className="h-4 w-4 mr-2 text-primary-500" /> {trip.start_date} to {trip.end_date} 
               <span className="ml-2 bg-primary-50 text-primary-700 text-xs px-2.5 py-0.5 rounded-full font-bold">
                 {diffDays} Days
               </span>
@@ -205,8 +297,8 @@ export default function TripDetails() {
               </div>
             </div>
             {isOverBudget && (
-              <div className="bg-red-50 rounded-xl p-4 border border-red-150 flex items-center flex-1 md:flex-none">
-                <AlertTriangle className="h-8 w-8 text-red-600 mr-3 shrink-0" />
+              <div className="bg-red-50 rounded-xl p-4 border border-red-150 flex items-center flex-1 md:flex-none animate-pulse">
+                <AlertTriangle className="h-8 w-8 text-red-650 mr-3 shrink-0" />
                 <div>
                   <span className="text-[10px] text-red-500 font-extrabold uppercase tracking-wider block">Warning</span>
                   <span className="text-xl font-black text-red-650">Over Budget!</span>
@@ -220,30 +312,37 @@ export default function TripDetails() {
 
       {/* Tabs Layout */}
       <div className="border-b border-gray-200 mb-8">
-        <nav className="flex space-x-8" aria-label="Tabs">
-          {['itinerary', 'budget', 'share'].map((tab) => (
+        <nav className="flex space-x-8">
+          {[
+            { id: 'builder', label: 'Itinerary Builder' },
+            { id: 'view', label: 'Itinerary View' },
+            { id: 'budget', label: 'Budget & Expenses' },
+            { id: 'share', label: 'Share Trip' }
+          ].map((tab) => (
             <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`pb-4 px-1 border-b-2 font-black text-sm capitalize transition-colors ${
-                activeTab === tab
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`pb-4 px-1 border-b-2 font-black text-sm transition-colors ${
+                activeTab === tab.id
                   ? 'border-primary-500 text-primary-600'
                   : 'border-transparent text-gray-450 hover:text-gray-700 hover:border-gray-300'
               }`}
             >
-              {tab === 'itinerary' ? 'Itinerary Builder' : tab === 'budget' ? 'Budget & Expenses' : 'Share Trip'}
+              {tab.label}
             </button>
           ))}
         </nav>
       </div>
 
       {/* Tab Contents */}
-      {activeTab === 'itinerary' && (
+      
+      {/* 1. ITINERARY BUILDER */}
+      {activeTab === 'builder' && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
           {/* Stops Timeline Left (2/3 width) */}
           <div className="lg:col-span-2 space-y-6">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-black text-gray-900">Your Route Timeline</h2>
+              <h2 className="text-xl font-black text-gray-900">Configure Stops & Order</h2>
               <button
                 onClick={() => setIsStopModalOpen(true)}
                 className="lg:hidden inline-flex items-center px-4 py-2 border border-transparent text-xs font-bold rounded-full shadow text-white bg-primary-500 hover:bg-primary-600"
@@ -252,20 +351,23 @@ export default function TripDetails() {
               </button>
             </div>
 
-            <div className="space-y-8 relative before:absolute before:inset-y-2 before:left-[17px] before:w-0.5 before:bg-gradient-to-b before:from-primary-500 before:to-amber-500">
+            <div className="space-y-6 relative before:absolute before:inset-y-2 before:left-[17px] before:w-0.5 before:bg-gradient-to-b before:from-primary-500 before:to-amber-500">
               {(!trip.stops || trip.stops.length === 0) ? (
-                <div className="bg-white rounded-2xl border border-gray-100 p-10 text-center text-gray-500 italic shadow-sm">
-                  No stops added to this trip yet. Use the planner panel to add your destinations!
+                <div className="bg-white rounded-2xl border border-gray-100 p-10 text-center text-gray-500 italic shadow-sm ml-6">
+                  No stops added to this trip yet. Use the route planner panel to add your destinations!
                 </div>
               ) : (
                 trip.stops.map((stop, index) => {
-                  const isPresetCity = POPULAR_CITIES.find(c => c.name.toLowerCase() === stop.city.toLowerCase());
-                  
+                  const city = MASTER_CITIES.find(c => c.id === stop.city_id);
+                  const stopActivities = trip.itinerary_items 
+                    ? trip.itinerary_items.filter(item => item.trip_stop_id === stop.id)
+                    : [];
+
                   return (
                     <div key={stop.id} className="relative flex gap-6 items-start">
-                      {/* Gradient Circle Pin */}
-                      <div className="flex items-center justify-center w-9 h-9 rounded-full bg-gradient-to-br from-primary-500 to-amber-500 text-white font-black text-sm shrink-0 shadow-md shadow-primary-500/20 ring-4 ring-white relative z-10">
-                        {index + 1}
+                      {/* Gradient Circle Pin showing stop_order */}
+                      <div className="flex items-center justify-center w-9 h-9 rounded-full bg-gradient-to-br from-primary-500 to-amber-500 text-white font-black text-sm shrink-0 shadow-md ring-4 ring-white relative z-10">
+                        {stop.stop_order}
                       </div>
                       
                       {/* Stop Info Card */}
@@ -273,98 +375,99 @@ export default function TripDetails() {
                         <div className="flex justify-between items-start mb-4 gap-4">
                           <div>
                             <h3 className="text-xl font-bold text-gray-950 flex items-center">
-                              <MapPin className="h-5 w-5 text-primary-500 mr-1.5 shrink-0" /> {stop.city}, {stop.country}
+                              <MapPin className="h-5 w-5 text-primary-500 mr-1.5 shrink-0" /> 
+                              {city ? `${city.name}, ${city.country}` : 'Custom City'}
                             </h3>
                             <span className="text-xs text-gray-450 font-bold block mt-1.5 flex items-center">
-                              <Clock className="h-3 w.5 mr-1" /> {stop.start_date} to {stop.end_date}
+                              <Clock className="h-3.5 w-3.5 mr-1" /> {stop.start_date} to {stop.end_date}
                             </span>
                           </div>
-                          <button
-                            onClick={() => handleDeleteStop(stop.id)}
-                            className="text-gray-400 hover:text-red-600 p-1.5 rounded-xl hover:bg-red-50 transition-colors"
-                            title="Delete Stop"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
+                          
+                          {/* Reordering and deleting actions */}
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              onClick={() => moveStop(index, 'up')}
+                              disabled={index === 0}
+                              className={`p-1.5 rounded-lg border transition-colors ${
+                                index === 0 
+                                  ? 'bg-gray-50 border-gray-100 text-gray-300 cursor-not-allowed' 
+                                  : 'bg-white border-gray-200 hover:bg-gray-50 text-gray-600'
+                              }`}
+                              title="Move Stop Up"
+                            >
+                              <ArrowUp className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => moveStop(index, 'down')}
+                              disabled={index === (trip.stops ? trip.stops.length - 1 : 0)}
+                              className={`p-1.5 rounded-lg border transition-colors ${
+                                index === (trip.stops ? trip.stops.length - 1 : 0)
+                                  ? 'bg-gray-50 border-gray-100 text-gray-300 cursor-not-allowed'
+                                  : 'bg-white border-gray-200 hover:bg-gray-50 text-gray-600'
+                              }`}
+                              title="Move Stop Down"
+                            >
+                              <ArrowDown className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteStop(stop.id)}
+                              className="text-gray-400 hover:text-red-600 p-1.5 rounded-lg hover:bg-red-50 transition-colors ml-2"
+                              title="Delete Stop"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
                         </div>
 
-                        {/* Activities section */}
-                        <div className="mt-6 border-t border-gray-50 pt-4">
-                          <h4 className="font-extrabold text-[10px] text-gray-400 uppercase tracking-widest mb-3 flex items-center">
-                            <CheckSquare className="h-3.5 w-3.5 mr-1 text-primary-500" /> Planned Checklist
-                          </h4>
-                          
-                          {stop.activities.length === 0 ? (
-                            <p className="text-xs text-gray-400 italic">No activities added. Pick suggestions or type a custom one below.</p>
+                        {/* List of itinerary items inside this stop */}
+                        <div className="mt-6 border-t border-gray-100 pt-4">
+                          <div className="flex justify-between items-center mb-3">
+                            <h4 className="font-extrabold text-[10px] text-gray-400 uppercase tracking-widest flex items-center">
+                              <CheckSquare className="h-4 w-4 mr-1 text-primary-500" /> Day Activities Checklist
+                            </h4>
+                            <button
+                              type="button"
+                              onClick={() => handleOpenActivityModal(stop.id)}
+                              className="text-xs text-primary-500 font-bold hover:text-primary-650"
+                            >
+                              + Add Activity block
+                            </button>
+                          </div>
+
+                          {stopActivities.length === 0 ? (
+                            <p className="text-xs text-gray-400 italic">No activity blocks logged for this city. click "+ Add Activity block" above.</p>
                           ) : (
-                            <div className="flex flex-wrap gap-2 mb-4">
-                              {stop.activities.map((act, i) => (
-                                <span 
-                                  key={i} 
-                                  className="inline-flex items-center pl-3 pr-1 py-1 rounded-full text-xs font-bold bg-primary-50/50 text-primary-800 border border-primary-100/50"
-                                >
-                                  {act}
-                                  <button
-                                    type="button"
-                                    onClick={() => handleDeleteActivity(stop.id, i)}
-                                    className="ml-1.5 text-primary-400 hover:text-red-650 hover:bg-primary-100 p-0.5 rounded-full"
-                                  >
-                                    &times;
-                                  </button>
-                                </span>
-                              ))}
+                            <div className="divide-y divide-gray-50">
+                              {stopActivities.map((item) => {
+                                const actDetails = MASTER_ACTIVITIES.find(a => a.id === item.activity_id);
+                                return (
+                                  <div key={item.id} className="py-3 flex justify-between items-center gap-4">
+                                    <div className="flex items-start gap-3">
+                                      <span className="bg-primary-50 text-primary-600 text-xs font-black px-2 py-0.5 rounded mt-0.5 select-none shrink-0">
+                                        {item.start_time}
+                                      </span>
+                                      <div>
+                                        <span className="font-bold text-gray-900 text-sm block">
+                                          {actDetails ? actDetails.name : 'Custom Activity'}
+                                        </span>
+                                        <span className="text-xs text-gray-450 flex items-center gap-2 mt-0.5 font-semibold">
+                                          <span>Date: {item.date}</span>
+                                          {actDetails && <span>• Cost: ₹{actDetails.estimated_cost}</span>}
+                                          {actDetails && <span>• Type: {actDetails.activity_type}</span>}
+                                        </span>
+                                      </div>
+                                    </div>
+                                    <button
+                                      onClick={() => handleDeleteItineraryItem(item.id)}
+                                      className="text-gray-400 hover:text-red-650 p-1 hover:bg-red-50 rounded"
+                                    >
+                                      &times;
+                                    </button>
+                                  </div>
+                                );
+                              })}
                             </div>
                           )}
-
-                          {/* Quick suggestions grids & inputs */}
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6 bg-gray-50/30 p-4 rounded-xl border border-gray-50">
-                            <div>
-                              <span className="block text-[10px] font-extrabold text-gray-400 uppercase tracking-wider mb-2.5">
-                                Suggested Activities
-                              </span>
-                              {isPresetCity ? (
-                                <div className="flex flex-col gap-1.5">
-                                  {isPresetCity.activities.map((presetAct) => (
-                                    <button
-                                      key={presetAct}
-                                      onClick={() => handleAddActivity(stop.id, presetAct)}
-                                      disabled={stop.activities.includes(presetAct)}
-                                      className={`text-left text-xs px-3 py-2 rounded-lg border font-bold transition-all ${
-                                        stop.activities.includes(presetAct) 
-                                          ? 'bg-gray-100 border-gray-100 text-gray-400 line-through cursor-default' 
-                                          : 'bg-white border-gray-200 hover:border-primary-400 hover:bg-primary-50 text-gray-700 hover:text-primary-700 shadow-sm'
-                                      }`}
-                                    >
-                                      + {presetAct}
-                                    </button>
-                                  ))}
-                                </div>
-                              ) : (
-                                <span className="text-xs text-gray-450 italic block">No presets for custom cities.</span>
-                              )}
-                            </div>
-
-                            <div>
-                              <span className="block text-[10px] font-extrabold text-gray-400 uppercase tracking-wider mb-2.5">
-                                Custom Activity
-                              </span>
-                              <form onSubmit={(e) => handleAddCustomActivity(e, stop.id)} className="flex gap-2">
-                                <input
-                                  type="text"
-                                  placeholder="e.g. Paragliding, Museum"
-                                  value={customActivityTexts[stop.id] || ''}
-                                  onChange={(e) => setCustomActivityTexts({ ...customActivityTexts, [stop.id]: e.target.value })}
-                                  className="flex-1 text-xs px-3.5 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 bg-white"
-                                />
-                                <button
-                                  type="submit"
-                                  className="px-4 py-2.5 bg-gray-800 hover:bg-gray-900 text-white rounded-lg text-xs font-bold transition-colors shadow-sm"
-                                >
-                                  Add
-                                </button>
-                              </form>
-                            </div>
-                          </div>
                         </div>
                       </div>
                     </div>
@@ -378,15 +481,15 @@ export default function TripDetails() {
           <div className="space-y-6 lg:sticky lg:top-24">
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
               <h3 className="text-lg font-black text-gray-900 mb-4">Route Planner</h3>
-              <p className="text-xs text-gray-500 mb-6">
-                Add travel stops to map out the journey timeline. Popular destinations auto-fill country and checklist suggestions.
+              <p className="text-xs text-gray-500 mb-6 leading-relaxed">
+                Add travel stops by selecting preset cities. Arrange your stops chronologically using up/down arrows to manage ordering.
               </p>
               
               <button
                 onClick={() => setIsStopModalOpen(true)}
                 className="w-full py-3 bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 text-white font-extrabold rounded-full shadow shadow-primary-500/20 text-sm flex items-center justify-center transition-all"
               >
-                <Plus className="h-5 w-5 mr-1" /> Add New Destination Stop
+                <Plus className="h-5 w-5 mr-1" /> Add New Stop
               </button>
             </div>
 
@@ -395,7 +498,7 @@ export default function TripDetails() {
               <h3 className="text-lg font-black text-gray-900 mb-4">Itinerary Summary</h3>
               <div className="space-y-4 text-sm font-medium">
                 <div className="flex justify-between py-2 border-b border-gray-50 text-gray-655">
-                  <span>Planned Destinations</span>
+                  <span>Planned Stops</span>
                   <span className="font-extrabold text-gray-950">{trip.stops ? trip.stops.length : 0} Cities</span>
                 </div>
                 <div className="flex justify-between py-2 border-b border-gray-50 text-gray-655">
@@ -416,6 +519,236 @@ export default function TripDetails() {
         </div>
       )}
 
+      {/* 2. ITINERARY VIEW (Day-wise Timeline / Calendar View) */}
+      {activeTab === 'view' && (
+        <div className="space-y-6">
+          {/* Header Controls */}
+          <div className="flex justify-between items-center mb-2 bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
+            <div>
+              <h2 className="text-xl font-black text-gray-900">Review Itinerary Plan</h2>
+              <p className="text-xs text-gray-550 mt-0.5">Toggle between day-by-day chronological list and date grid calendar.</p>
+            </div>
+            
+            {/* View Mode Toggle buttons */}
+            <div className="inline-flex rounded-lg border border-gray-200 bg-gray-50 p-1">
+              <button
+                onClick={() => setViewMode('list')}
+                className={`inline-flex items-center px-3 py-1.5 rounded-md text-xs font-bold transition-all ${
+                  viewMode === 'list' 
+                    ? 'bg-white text-primary-600 shadow-sm' 
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                <List className="h-3.5 w-3.5 mr-1" /> List View
+              </button>
+              <button
+                onClick={() => setViewMode('calendar')}
+                className={`inline-flex items-center px-3 py-1.5 rounded-md text-xs font-bold transition-all ${
+                  viewMode === 'calendar' 
+                    ? 'bg-white text-primary-600 shadow-sm' 
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                <Calendar className="h-3.5 w-3.5 mr-1" /> Calendar View
+              </button>
+            </div>
+          </div>
+
+          {/* LIST VIEW LAYOUT */}
+          {viewMode === 'list' && (
+            <div className="space-y-6">
+              {tripDateList.map((dateStr, index) => {
+                // Find if a stop is covering this date
+                const stopCover = (trip.stops || []).find(s => dateStr >= s.start_date && dateStr <= s.end_date);
+                const cityCover = stopCover ? MASTER_CITIES.find(c => c.id === stopCover.city_id) : null;
+
+                // Find activities on this date
+                const dayItems = (trip.itinerary_items || [])
+                  .filter(item => item.date === dateStr)
+                  .sort((a, b) => a.start_time.localeCompare(b.start_time));
+
+                return (
+                  <div key={dateStr} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 hover:shadow-md transition-shadow">
+                    {/* Date / Day Header */}
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-gray-50 pb-3 mb-4 gap-2">
+                      <div className="flex items-center gap-3">
+                        <span className="bg-gradient-to-br from-primary-500 to-amber-500 text-white text-xs font-black px-3 py-1 rounded-full shadow-sm">
+                          Day {index + 1}
+                        </span>
+                        <h3 className="font-extrabold text-base text-gray-900">
+                          {new Date(dateStr).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                        </h3>
+                      </div>
+                      
+                      {cityCover && (
+                        <div className="flex items-center text-xs font-extrabold text-teal-650 bg-teal-50 px-3 py-1 rounded-full border border-teal-100/50">
+                          <MapPin className="h-3.5 w-3.5 mr-1" /> {cityCover.name}, {cityCover.country}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Day Activity Blocks */}
+                    {dayItems.length === 0 ? (
+                      <p className="text-xs text-gray-400 italic py-2">No activities scheduled for this day.</p>
+                    ) : (
+                      <div className="space-y-4">
+                        {dayItems.map((item) => {
+                          const act = MASTER_ACTIVITIES.find(a => a.id === item.activity_id);
+                          return (
+                            <div key={item.id} className="flex flex-col sm:flex-row items-start gap-4 p-4 bg-gray-50/50 rounded-xl border border-gray-100/50 hover:bg-gray-50 transition-colors">
+                              {/* Time Block */}
+                              <div className="flex items-center gap-1.5 text-xs font-black text-gray-800 shrink-0">
+                                <Clock className="h-4 w-4 text-primary-500" />
+                                <span>{item.start_time} - {item.end_time}</span>
+                                {act && <span className="text-gray-400">({act.duration_minutes} mins)</span>}
+                              </div>
+
+                              {/* Title / details */}
+                              <div className="flex-1">
+                                <span className="font-bold text-base text-gray-900 block">
+                                  {act ? act.name : 'Custom Activity'}
+                                </span>
+                                {act && (
+                                  <p className="text-xs text-gray-500 mt-1 font-semibold leading-relaxed">
+                                    {act.description}
+                                  </p>
+                                )}
+                              </div>
+
+                              {/* Type & Cost Badges */}
+                              {act && (
+                                <div className="flex sm:flex-col items-end gap-2 shrink-0 w-full sm:w-auto mt-2 sm:mt-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-gray-100">
+                                  <span className="bg-primary-50 text-primary-700 text-xs px-2.5 py-0.5 rounded-full font-bold">
+                                    {act.activity_type}
+                                  </span>
+                                  <span className="text-sm font-black text-gray-800">
+                                    ₹{act.estimated_cost.toLocaleString()}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* CALENDAR VIEW GRID */}
+          {viewMode === 'calendar' && (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+              {/* Calendar Grid on Left (2/3 width) */}
+              <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+                <h3 className="font-black text-lg text-gray-900 mb-6">Trip Calendar</h3>
+                
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                  {tripDateList.map((dateStr, index) => {
+                    const stopCover = (trip.stops || []).find(s => dateStr >= s.start_date && dateStr <= s.end_date);
+                    const cityCover = stopCover ? MASTER_CITIES.find(c => c.id === stopCover.city_id) : null;
+                    const dayItems = (trip.itinerary_items || []).filter(item => item.date === dateStr);
+                    const isSelected = selectedCalendarDate === dateStr;
+
+                    return (
+                      <button
+                        key={dateStr}
+                        onClick={() => setSelectedCalendarDate(dateStr)}
+                        className={`flex flex-col justify-between p-4 rounded-xl text-left border-2 transition-all min-h-[110px] ${
+                          isSelected
+                            ? 'bg-primary-50/50 border-primary-500 shadow'
+                            : 'bg-white border-gray-200 hover:border-gray-300'
+                        }`}
+                      >
+                        {/* Day indicator */}
+                        <div className="flex justify-between items-start w-full">
+                          <span className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full ${
+                            isSelected ? 'bg-primary-500 text-white' : 'bg-gray-100 text-gray-500'
+                          }`}>
+                            Day {index + 1}
+                          </span>
+                          <span className="text-xs text-gray-400 font-bold mt-0.5">
+                            {dateStr.split('-')[2]}
+                          </span>
+                        </div>
+
+                        {/* City acronym */}
+                        {cityCover && (
+                          <span className="text-[10px] font-black text-teal-650 block mt-2 truncate max-w-full">
+                            📍 {cityCover.name}
+                          </span>
+                        )}
+
+                        {/* Bullet count of activities */}
+                        <div className="mt-3 text-[9px] font-bold text-gray-450 block">
+                          {dayItems.length} {dayItems.length === 1 ? 'Activity' : 'Activities'}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Side Date Details card (1/3 width) */}
+              <div className="space-y-6">
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+                  {selectedCalendarDate ? (
+                    <div>
+                      <h4 className="font-black text-lg text-gray-900 border-b border-gray-50 pb-2 mb-4">
+                        Schedule for {new Date(selectedCalendarDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      </h4>
+                      
+                      {(() => {
+                        const dayItems = (trip.itinerary_items || [])
+                          .filter(item => item.date === selectedCalendarDate)
+                          .sort((a, b) => a.start_time.localeCompare(b.start_time));
+                          
+                        if (dayItems.length === 0) {
+                          return <p className="text-xs text-gray-400 italic">No activity blocks scheduled for this date.</p>;
+                        }
+
+                        return (
+                          <div className="space-y-4">
+                            {dayItems.map(item => {
+                              const act = MASTER_ACTIVITIES.find(a => a.id === item.activity_id);
+                              return (
+                                <div key={item.id} className="p-3 bg-gray-50 rounded-xl border border-gray-100">
+                                  <div className="flex justify-between items-start gap-2 mb-1.5">
+                                    <span className="font-extrabold text-sm text-gray-900 block truncate leading-tight">
+                                      {act ? act.name : 'Custom Activity'}
+                                    </span>
+                                    <span className="bg-primary-50 text-primary-750 text-[9px] font-extrabold px-1.5 py-0.5 rounded shrink-0 uppercase">
+                                      {item.start_time}
+                                    </span>
+                                  </div>
+                                  {act && (
+                                    <div className="flex justify-between text-[10px] text-gray-400 font-extrabold">
+                                      <span>{act.activity_type} ({act.duration_minutes}m)</span>
+                                      <span className="text-gray-700">₹{act.estimated_cost}</span>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  ) : (
+                    <div className="text-center py-6 text-gray-400">
+                      <HelpCircle className="h-8 w-8 mx-auto mb-2 text-gray-300" />
+                      <p className="text-xs font-semibold">Select a calendar date to view details.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 3. BUDGET & EXPENSES */}
       {activeTab === 'budget' && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
           {/* Budget Logs and Breakdown Left (2/3 width) */}
@@ -428,13 +761,15 @@ export default function TripDetails() {
               </div>
               <div className="text-center border-r border-gray-100">
                 <span className="text-xs text-gray-400 font-bold uppercase tracking-wider block">Remaining</span>
-                <span className={`text-xl font-black block mt-1 ${remaining < 0 ? 'text-red-600 animate-pulse' : 'text-emerald-600'}`}>
+                <span className={`text-xl font-black block mt-1 ${remaining < 0 ? 'text-red-650 animate-pulse' : 'text-emerald-600'}`}>
                   ₹{remaining.toLocaleString()}
                 </span>
               </div>
               <div className="text-center">
                 <span className="text-xs text-gray-400 font-bold uppercase tracking-wider block">Daily Average</span>
-                <span className="text-xl font-black text-gray-900 block mt-1">₹{Number(dailyAverage).toLocaleString()}</span>
+                <span className="text-xl font-black text-gray-900 block mt-1">
+                  ₹{diffDays > 0 ? (totalSpent / diffDays).toFixed(0).toLocaleString() : 0}
+                </span>
               </div>
             </div>
 
@@ -489,7 +824,7 @@ export default function TripDetails() {
                     <tbody className="divide-y divide-gray-100">
                       {trip.expenses.map((exp) => (
                         <tr key={exp.id} className="hover:bg-gray-50/50">
-                          <td className="py-3.5 px-4 font-bold text-gray-900">{exp.title}</td>
+                          <td className="py-3.5 px-4 font-bold text-gray-900">{exp.title || exp.description}</td>
                           <td className="py-3.5 px-4">
                             <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-bold ${
                               exp.category === 'Transport' ? 'bg-blue-50 text-blue-700 border border-blue-100/50' :
@@ -504,7 +839,7 @@ export default function TripDetails() {
                           <td className="py-3.5 px-4 text-center">
                             <button
                               onClick={() => handleDeleteExpense(exp.id)}
-                              className="text-gray-400 hover:text-red-650 p-1 rounded hover:bg-red-50"
+                              className="text-gray-400 hover:text-red-655 p-1 rounded hover:bg-red-50"
                             >
                               <Trash2 className="h-4 w-4" />
                             </button>
@@ -581,10 +916,11 @@ export default function TripDetails() {
         </div>
       )}
 
+      {/* 4. SHARE TRIP */}
       {activeTab === 'share' && (
         <div className="max-w-2xl bg-white rounded-2xl border border-gray-100 shadow-sm p-6 md:p-8 space-y-6">
           <div>
-            <h2 className="text-xl font-black text-gray-900">Share Itinerary</h2>
+            <h2 className="text-xl font-black text-gray-905">Share Itinerary</h2>
             <p className="text-sm text-gray-500 mt-1">Generate a public URL to share your itinerary and budget highlights with family or friends.</p>
           </div>
 
@@ -623,13 +959,6 @@ export default function TripDetails() {
                   </button>
                 </div>
               </div>
-
-              <div className="bg-blue-50 border border-blue-150 rounded-xl p-4 flex gap-3 text-blue-800">
-                <Info className="h-5 w-5 shrink-0 mt-0.5 text-blue-650" />
-                <p className="text-xs leading-relaxed">
-                  Your team members or friends can click the copied link to view details. They will also be able to copy this entire trip plan structure straight into their own account with a single click.
-                </p>
-              </div>
             </div>
           ) : (
             <div className="text-center py-6 text-gray-500 text-sm italic">
@@ -641,10 +970,10 @@ export default function TripDetails() {
 
       {/* Add Stop Modal Overlay */}
       {isStopModalOpen && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 flex items-center justify-center p-4 backdrop-blur-xs animate-fade-in">
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 flex items-center justify-center p-4 backdrop-blur-xs">
           <div className="bg-white rounded-2xl shadow-xl border border-gray-100 w-full max-w-md p-6 space-y-6">
             <div className="flex justify-between items-center border-b border-gray-100 pb-3">
-              <h3 className="text-lg font-black text-gray-905">Add Stop to Itinerary</h3>
+              <h3 className="text-lg font-black text-gray-900">Add Stop to Itinerary</h3>
               <button
                 onClick={() => setIsStopModalOpen(false)}
                 className="text-gray-400 hover:text-gray-600 text-xl font-bold p-1"
@@ -654,57 +983,24 @@ export default function TripDetails() {
             </div>
 
             <form onSubmit={handleAddStop} className="space-y-4">
-              <div className="relative">
-                <label className="block text-xs font-bold text-gray-550 uppercase tracking-wider mb-1">Destination City</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Search city (e.g. Paris, Goa, Tokyo...)"
-                  value={citySearch}
-                  onChange={(e) => {
-                    setCitySearch(e.target.value);
-                    const matched = POPULAR_CITIES.find(c => c.name.toLowerCase() === e.target.value.toLowerCase());
-                    setSelectedCityObj(matched || null);
-                  }}
-                  className="w-full px-3.5 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 text-sm bg-white"
-                />
-
-                {filteredCities.length > 0 && !selectedCityObj && (
-                  <div className="absolute top-full left-0 right-0 z-50 bg-white border border-gray-200 shadow-lg rounded-xl mt-1 max-h-40 overflow-y-auto divide-y divide-gray-100">
-                    {filteredCities.map((city) => (
-                      <button
-                        key={city.name}
-                        type="button"
-                        onClick={() => {
-                          setCitySearch(city.name);
-                          setSelectedCityObj(city);
-                        }}
-                        className="w-full text-left px-4 py-2.5 text-xs font-bold hover:bg-gray-50 text-gray-700"
-                      >
-                        {city.name}, {city.country} (Preset)
-                      </button>
-                    ))}
-                  </div>
-                )}
+              <div>
+                <label className="block text-xs font-bold text-gray-550 uppercase tracking-wider mb-1.5">Destination City</label>
+                <select
+                  value={selectedCityId}
+                  onChange={(e) => setSelectedCityId(e.target.value)}
+                  className="w-full px-3.5 py-2.5 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 text-sm font-semibold"
+                >
+                  {MASTER_CITIES.map((city) => (
+                    <option key={city.id} value={city.id}>
+                      {city.name}, {city.country}
+                    </option>
+                  ))}
+                </select>
               </div>
-
-              {!selectedCityObj && (
-                <div>
-                  <label className="block text-xs font-bold text-gray-555 uppercase tracking-wider mb-1">Country</label>
-                  <input
-                    type="text"
-                    required={!selectedCityObj}
-                    placeholder="Enter country..."
-                    value={customCountry}
-                    onChange={(e) => setCustomCountry(e.target.value)}
-                    className="w-full px-3.5 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 text-sm bg-white"
-                  />
-                </div>
-              )}
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-gray-555 uppercase tracking-wider mb-1">Arrival Date</label>
+                  <label className="block text-xs font-bold text-gray-555 uppercase tracking-wider mb-1.5">Arrival Date</label>
                   <input
                     type="date"
                     required
@@ -714,7 +1010,7 @@ export default function TripDetails() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-gray-555 uppercase tracking-wider mb-1">Departure Date</label>
+                  <label className="block text-xs font-bold text-gray-555 uppercase tracking-wider mb-1.5">Departure Date</label>
                   <input
                     type="date"
                     required
@@ -738,6 +1034,170 @@ export default function TripDetails() {
                   className="px-4 py-2 border border-transparent rounded-lg text-xs font-bold text-white bg-primary-500 hover:bg-primary-600 shadow shadow-primary-500/10"
                 >
                   Add Stop
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Add Itinerary Item Modal Overlay */}
+      {isActivityModalOpen && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 flex items-center justify-center p-4 backdrop-blur-xs">
+          <div className="bg-white rounded-2xl shadow-xl border border-gray-100 w-full max-w-md p-6 space-y-6">
+            <div className="flex justify-between items-center border-b border-gray-100 pb-3">
+              <h3 className="text-lg font-black text-gray-900">Schedule Day Activity</h3>
+              <button
+                onClick={() => setIsActivityModalOpen(false)}
+                className="text-gray-400 hover:text-gray-600 text-xl font-bold p-1"
+              >
+                &times;
+              </button>
+            </div>
+
+            <form onSubmit={handleAddItineraryItem} className="space-y-4">
+              {/* Date selection (limited to stop bounds) */}
+              <div>
+                <label className="block text-xs font-bold text-gray-555 uppercase tracking-wider mb-1">Target Date</label>
+                <input
+                  type="date"
+                  required
+                  value={activityDate}
+                  min={trip.stops.find(s => s.id === selectedStopIdForActivity)?.start_date}
+                  max={trip.stops.find(s => s.id === selectedStopIdForActivity)?.end_date}
+                  onChange={(e) => setActivityDate(e.target.value)}
+                  className="w-full px-3.5 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 text-sm bg-white"
+                />
+              </div>
+
+              {/* Source selection */}
+              <div className="flex gap-4 border-b border-gray-100 pb-3">
+                <label className="inline-flex items-center text-sm font-bold text-gray-700 cursor-pointer">
+                  <input
+                    type="radio"
+                    value="preset"
+                    checked={activitySource === 'preset'}
+                    onChange={() => setActivitySource('preset')}
+                    className="mr-2"
+                  />
+                  Preset Suggestion
+                </label>
+                <label className="inline-flex items-center text-sm font-bold text-gray-700 cursor-pointer">
+                  <input
+                    type="radio"
+                    value="custom"
+                    checked={activitySource === 'custom'}
+                    onChange={() => setActivitySource('custom')}
+                    className="mr-2"
+                  />
+                  Custom Activity
+                </label>
+              </div>
+
+              {/* Preset Selector */}
+              {activitySource === 'preset' ? (
+                <div>
+                  <label className="block text-xs font-bold text-gray-550 uppercase tracking-wider mb-1.5">Select Preset Activity</label>
+                  <select
+                    required={activitySource === 'preset'}
+                    value={selectedActivityId}
+                    onChange={(e) => setSelectedActivityId(e.target.value)}
+                    className="w-full px-3.5 py-2.5 border border-gray-300 rounded-lg bg-white focus:outline-none text-sm font-semibold"
+                  >
+                    <option value="">-- Choose Activity --</option>
+                    {MASTER_ACTIVITIES.filter(act => act.city_id === trip.stops.find(s => s.id === selectedStopIdForActivity)?.city_id).map((act) => (
+                      <option key={act.id} value={act.id}>
+                        {act.name} (Est. Cost: ₹{act.estimated_cost})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : (
+                // Custom fields
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-550 uppercase tracking-wider mb-1">Activity Name</label>
+                    <input
+                      type="text"
+                      required={activitySource === 'custom'}
+                      value={customActivityName}
+                      onChange={(e) => setCustomActivityName(e.target.value)}
+                      placeholder="e.g. Scuba diving, Museum tour"
+                      className="w-full px-3.5 py-2.5 border border-gray-300 rounded-lg text-sm bg-white"
+                    />
+                  </div>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Type</label>
+                      <select
+                        value={customActivityType}
+                        onChange={(e) => setCustomActivityType(e.target.value)}
+                        className="w-full px-2 py-2 border border-gray-300 rounded-lg text-xs"
+                      >
+                        {['Sightseeing', 'Culture', 'Leisure', 'Adventure', 'Beach', 'History'].map(type => (
+                          <option key={type} value={type}>{type}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Cost (INR)</label>
+                      <input
+                        type="number"
+                        value={customActivityCost}
+                        onChange={(e) => setCustomActivityCost(e.target.value)}
+                        className="w-full px-2 py-2 border border-gray-300 rounded-lg text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Duration (Min)</label>
+                      <input
+                        type="number"
+                        value={customActivityDuration}
+                        onChange={(e) => setCustomActivityDuration(e.target.value)}
+                        className="w-full px-2 py-2 border border-gray-300 rounded-lg text-xs"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Time slots */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-555 uppercase tracking-wider mb-1">Start Time</label>
+                  <input
+                    type="time"
+                    required
+                    value={activityStartTime}
+                    onChange={(e) => setActivityStartTime(e.target.value)}
+                    className="w-full px-3.5 py-2.5 border border-gray-300 rounded-lg text-sm bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-555 uppercase tracking-wider mb-1">End Time</label>
+                  <input
+                    type="time"
+                    required
+                    value={activityEndTime}
+                    onChange={(e) => setActivityEndTime(e.target.value)}
+                    className="w-full px-3.5 py-2.5 border border-gray-300 rounded-lg text-sm bg-white"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end space-x-3 pt-4 border-t border-gray-100">
+                <button
+                  type="button"
+                  onClick={() => setIsActivityModalOpen(false)}
+                  className="px-4 py-2 border border-gray-350 rounded-lg text-xs font-semibold text-gray-700 bg-white hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 border border-transparent rounded-lg text-xs font-bold text-white bg-primary-500 hover:bg-primary-600 shadow shadow-primary-500/10"
+                >
+                  Schedule Activity
                 </button>
               </div>
             </form>

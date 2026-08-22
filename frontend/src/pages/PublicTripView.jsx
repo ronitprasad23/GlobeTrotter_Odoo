@@ -1,6 +1,6 @@
-﻿import React from 'react';
+import React from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { getTrip, getTrips, saveTrips } from '../utils/storage';
+import { getTrip, getTrips, saveTrips, MASTER_CITIES, MASTER_ACTIVITIES } from '../utils/storage';
 import { Calendar, MapPin, IndianRupee, Compass, Copy } from 'lucide-react';
 
 export default function PublicTripView() {
@@ -51,7 +51,7 @@ export default function PublicTripView() {
         </div>
         <button
           onClick={handleCopyTrip}
-          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-semibold rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700"
+          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-semibold rounded-md shadow-sm text-white bg-primary-650 hover:bg-primary-700"
         >
           <Copy className="h-4 w-4 mr-2" /> Copy Trip to My Account
         </button>
@@ -69,34 +69,47 @@ export default function PublicTripView() {
 
           <h2 className="text-2xl font-bold text-gray-900">Shared Itinerary Stops</h2>
           <div className="space-y-8 relative before:absolute before:inset-0 before:left-4 before:w-0.5 before:bg-gray-200">
-            {trip.stops.length === 0 ? (
+            {(!trip.stops || trip.stops.length === 0) ? (
               <p className="text-gray-500 italic ml-8">No stops added yet.</p>
             ) : (
-              trip.stops.map((stop, index) => (
-                <div key={stop.id} className="relative flex gap-6 items-start">
-                  <div className="absolute left-4 -translate-x-1/2 flex items-center justify-center w-8 h-8 rounded-full bg-primary-600 text-white font-bold ring-8 ring-white">
-                    {index + 1}
-                  </div>
-                  <div className="ml-8 flex-1 bg-white rounded-lg shadow-sm p-6 border border-gray-100">
-                    <h3 className="text-xl font-bold text-gray-900 flex items-center">
-                      <MapPin className="h-5 w-5 text-gray-500 mr-1" /> {stop.city}, {stop.country}
-                    </h3>
-                    <span className="text-sm text-gray-500 mt-1 block font-medium">{stop.start_date} to {stop.end_date}</span>
-                    <div className="mt-4">
-                      <h4 className="font-semibold text-sm text-gray-700 mb-2">Planned Activities:</h4>
-                      {stop.activities.length === 0 ? (
-                        <span className="text-gray-500 text-sm italic">No activities planned.</span>
-                      ) : (
-                        <ul className="list-disc list-inside text-gray-600 space-y-1 pl-2 text-sm">
-                          {stop.activities.map((act, i) => (
-                            <li key={i}>{act}</li>
-                          ))}
-                        </ul>
-                      )}
+              trip.stops.map((stop, index) => {
+                const city = MASTER_CITIES.find(c => c.id === stop.city_id);
+                const stopItems = (trip.itinerary_items || [])
+                  .filter(item => item.trip_stop_id === stop.id)
+                  .sort((a, b) => a.start_time.localeCompare(b.start_time));
+                
+                return (
+                  <div key={stop.id} className="relative flex gap-6 items-start">
+                    <div className="absolute left-4 -translate-x-1/2 flex items-center justify-center w-8 h-8 rounded-full bg-primary-600 text-white font-bold ring-8 ring-white">
+                      {index + 1}
+                    </div>
+                    <div className="ml-8 flex-1 bg-white rounded-lg shadow-sm p-6 border border-gray-100">
+                      <h3 className="text-xl font-bold text-gray-900 flex items-center">
+                        <MapPin className="h-5 w-5 text-gray-500 mr-1" /> 
+                        {city ? `${city.name}, ${city.country}` : 'Custom City'}
+                      </h3>
+                      <span className="text-sm text-gray-500 mt-1 block font-medium">{stop.start_date} to {stop.end_date}</span>
+                      <div className="mt-4">
+                        <h4 className="font-semibold text-sm text-gray-700 mb-2">Planned Activities:</h4>
+                        {stopItems.length === 0 ? (
+                          <span className="text-gray-500 text-sm italic">No activities planned.</span>
+                        ) : (
+                          <ul className="list-disc list-inside text-gray-655 space-y-1 pl-2 text-sm font-semibold">
+                            {stopItems.map((item) => {
+                              const act = MASTER_ACTIVITIES.find(a => a.id === item.activity_id);
+                              return (
+                                <li key={item.id}>
+                                  {act ? act.name : 'Custom Activity'} ({item.start_time} - {item.end_time})
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </div>
@@ -132,7 +145,7 @@ export default function PublicTripView() {
                 const pct = totalSpent > 0 ? (amt / totalSpent) * 100 : 0;
                 return (
                   <div key={cat} className="space-y-1">
-                    <div className="flex justify-between text-xs font-semibold text-gray-500">
+                    <div className="flex justify-between text-xs font-semibold text-gray-550">
                       <span>{cat}</span>
                       <span>₹{amt.toLocaleString()} ({pct.toFixed(0)}%)</span>
                     </div>
