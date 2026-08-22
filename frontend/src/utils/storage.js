@@ -49,7 +49,31 @@ export function getTrips() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultTrips));
     return defaultTrips;
   }
-  return JSON.parse(data);
+  
+  const parsed = JSON.parse(data);
+  let updated = false;
+  
+  // Auto-migrate old cached trips to add cover images if missing
+  const upgraded = parsed.map(t => {
+    if (!t.cover_image) {
+      updated = true;
+      if (t.id === '1') {
+        return { ...t, cover_image: 'https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=600&auto=format&fit=crop&q=80' };
+      } else if (t.id === '2') {
+        return { ...t, cover_image: 'https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?w=600&auto=format&fit=crop&q=80' };
+      } else {
+        return { ...t, cover_image: 'https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=600&auto=format&fit=crop&q=80' };
+      }
+    }
+    return t;
+  });
+  
+  if (updated) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(upgraded));
+    return upgraded;
+  }
+  
+  return parsed;
 }
 
 export function saveTrips(trips) {
@@ -70,7 +94,7 @@ export function addTrip(name, start_date, end_date, description, budget = 50000,
     end_date,
     description,
     budget: Number(budget),
-    cover_image: cover_image || 'https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=600&auto=format&fit=crop&q=80', // default camper cover
+    cover_image: cover_image || 'https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=600&auto=format&fit=crop&q=80',
     isPublic: false,
     stops: [],
     expenses: []
