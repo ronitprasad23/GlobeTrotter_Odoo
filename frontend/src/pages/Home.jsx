@@ -77,7 +77,7 @@ export default function Home() {
       >
         <div className="max-w-5xl mx-auto px-4 text-center space-y-6">
           <div className="inline-flex items-center bg-white/10 backdrop-blur-md px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-wider text-primary-200 border border-white/10">
-            ✈️ GlobeTrotter Planner v2.0
+            ✨ Curating Your Next Great Escape
           </div>
           <h1 className="text-5xl md:text-6xl font-black tracking-tight drop-shadow-md leading-tight">
             Plan Trips Instantly
