@@ -1,4 +1,4 @@
-﻿# Logs
+# Logs
 logs
 *.log
 npm-debug.log*
@@ -24,3 +24,21 @@ lerna-debug.log*
 *.njsproj
 *.sln
 *.sw?
+
+# Python cache and byte-code
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# SQLite database (if used locally)
+db.sqlite3
+
+# Windows thumbnail cache and folder settings
+Thumbs.db
+desktop.ini
