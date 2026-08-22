@@ -6,9 +6,9 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
-from .models import Users, Trips, Cities, TripStops
+from .models import Users, Trips, Cities, TripStops, Activities, ItineraryItems, Expenses
 from .utils import generate_jwt_token
-from .serializers import TripsSerializer, CitiesSerializer, TripStopsSerializer
+from .serializers import TripsSerializer, CitiesSerializer, TripStopsSerializer, ActivitiesSerializer, ItineraryItemsSerializer, ExpensesSerializer
 
 @api_view(['GET'])
 @permission_classes([AllowAny])
@@ -216,6 +216,128 @@ def trip_stops_detail_view(request, trip_id, stop_id):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     elif request.method == 'DELETE':
         stop.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+def activities_list_create_view(request):
+    if request.method == 'GET':
+        city_id = request.query_params.get('city_id')
+        if city_id:
+            activities = Activities.objects.filter(city_id=city_id)
+        else:
+            activities = Activities.objects.all()
+        serializer = ActivitiesSerializer(activities, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    elif request.method == 'POST':
+        serializer = ActivitiesSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+def itinerary_list_create_view(request, trip_id, stop_id):
+    try:
+        trip = Trips.objects.get(pk=trip_id, user=request.user)
+    except Trips.DoesNotExist:
+        return Response({"error": "Trip not found"}, status=status.HTTP_404_NOT_FOUND)
+
+    try:
+        stop = TripStops.objects.get(pk=stop_id, trip=trip)
+    except TripStops.DoesNotExist:
+        return Response({"error": "Trip stop not found"}, status=status.HTTP_404_NOT_FOUND)
+
+    if request.method == 'GET':
+        items = ItineraryItems.objects.filter(trip_stop=stop).order_by('sort_order')
+        serializer = ItineraryItemsSerializer(items, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    elif request.method == 'POST':
+        serializer = ItineraryItemsSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save(trip=trip, trip_stop=stop)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['PUT', 'DELETE'])
+@permission_classes([IsAuthenticated])
+def itinerary_detail_view(request, trip_id, stop_id, item_id):
+    try:
+        trip = Trips.objects.get(pk=trip_id, user=request.user)
+    except Trips.DoesNotExist:
+        return Response({"error": "Trip not found"}, status=status.HTTP_404_NOT_FOUND)
+
+    try:
+        stop = TripStops.objects.get(pk=stop_id, trip=trip)
+    except TripStops.DoesNotExist:
+        return Response({"error": "Trip stop not found"}, status=status.HTTP_404_NOT_FOUND)
+
+    try:
+        item = ItineraryItems.objects.get(pk=item_id, trip_stop=stop)
+    except ItineraryItems.DoesNotExist:
+        return Response({"error": "Itinerary item not found"}, status=status.HTTP_404_NOT_FOUND)
+
+    if request.method == 'PUT':
+        serializer = ItineraryItemsSerializer(item, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    elif request.method == 'DELETE':
+        item.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+def expenses_list_create_view(request, trip_id):
+    try:
+        trip = Trips.objects.get(pk=trip_id, user=request.user)
+    except Trips.DoesNotExist:
+        return Response({"error": "Trip not found"}, status=status.HTTP_404_NOT_FOUND)
+
+    if request.method == 'GET':
+        expenses = Expenses.objects.filter(trip=trip)
+        serializer = ExpensesSerializer(expenses, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    elif request.method == 'POST':
+        serializer = ExpensesSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save(trip=trip)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['PUT', 'DELETE'])
+@permission_classes([IsAuthenticated])
+def expenses_detail_view(request, trip_id, expense_id):
+    try:
+        trip = Trips.objects.get(pk=trip_id, user=request.user)
+    except Trips.DoesNotExist:
+        return Response({"error": "Trip not found"}, status=status.HTTP_404_NOT_FOUND)
+
+    try:
+        expense = Expenses.objects.get(pk=expense_id, trip=trip)
+    except Expenses.DoesNotExist:
+        return Response({"error": "Expense not found"}, status=status.HTTP_404_NOT_FOUND)
+
+    if request.method == 'PUT':
+        serializer = ExpensesSerializer(expense, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    elif request.method == 'DELETE':
+        expense.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 

@@ -206,3 +206,83 @@ class TripStopsSerializer(serializers.ModelSerializer):
             validated_data['city'] = city
 
         return super().update(instance, validated_data)
+
+
+class ActivitiesSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Activities
+        fields = ['id', 'city', 'name', 'description', 'activity_type', 'duration_minutes', 'estimated_cost', 'image_url']
+
+
+class ItineraryItemsSerializer(serializers.ModelSerializer):
+    activity_detail = ActivitiesSerializer(source='activity', read_only=True)
+    activity = serializers.PrimaryKeyRelatedField(queryset=Activities.objects.all(), required=False, allow_null=True)
+    activity_name = serializers.CharField(write_only=True, required=False)
+
+    class Meta:
+        model = ItineraryItems
+        fields = ['id', 'trip', 'trip_stop', 'activity', 'activity_detail', 'activity_name', 'date', 'start_time', 'end_time', 'sort_order']
+        read_only_fields = ['id', 'trip', 'trip_stop']
+
+    def validate(self, data):
+        start_time = data.get('start_time')
+        end_time = data.get('end_time')
+
+        if start_time is None and self.instance:
+            start_time = self.instance.start_time
+        if end_time is None and self.instance:
+            end_time = self.instance.end_time
+
+        if start_time and end_time and end_time <= start_time:
+            raise serializers.ValidationError("End time must be greater than start time.")
+        return data
+
+    def create(self, validated_data):
+        activity_name = validated_data.pop('activity_name', None)
+        activity = validated_data.get('activity')
+
+        if activity_name:
+            trip_stop = validated_data.get('trip_stop')
+            city = trip_stop.city if trip_stop else None
+            if not city:
+                raise serializers.ValidationError({"activity_name": "Cannot resolve city for activity creation."})
+
+            activity, _ = Activities.objects.get_or_create(
+                name=activity_name,
+                city=city
+            )
+            validated_data['activity'] = activity
+
+        if not validated_data.get('activity'):
+            raise serializers.ValidationError({"activity": "This field or activity_name is required."})
+
+        return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+        activity_name = validated_data.pop('activity_name', None)
+        
+        if activity_name:
+            trip_stop = instance.trip_stop
+            city = trip_stop.city if trip_stop else None
+            if not city:
+                raise serializers.ValidationError({"activity_name": "Cannot resolve city for activity creation."})
+
+            activity, _ = Activities.objects.get_or_create(
+                name=activity_name,
+                city=city
+            )
+            validated_data['activity'] = activity
+
+        return super().update(instance, validated_data)
+
+
+class ExpensesSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Expenses
+        fields = ['id', 'trip', 'trip_stop', 'category', 'description', 'amount', 'expense_date']
+        read_only_fields = ['id', 'trip']
+
+    def validate_amount(self, value):
+        if value < 0:
+            raise serializers.ValidationError("Expense amount cannot be negative.")
+        return value
