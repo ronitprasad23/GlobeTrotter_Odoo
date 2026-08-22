@@ -1,4 +1,4 @@
-﻿const STORAGE_KEY = 'globetrotter_trips';
+const STORAGE_KEY = 'globetrotter_trips';
 
 const defaultTrips = [
   {
@@ -8,6 +8,7 @@ const defaultTrips = [
     end_date: '2026-06-30',
     description: 'Exploring France, Switzerland, and Italy with friends.',
     budget: 120000,
+    cover_image: 'https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=600&auto=format&fit=crop&q=80',
     isPublic: true,
     stops: [
       { id: '101', city: 'Paris', country: 'France', start_date: '2026-06-15', end_date: '2026-06-20', activities: ['Louvre Museum Tour', 'Eiffel Tower at Night'] },
@@ -29,6 +30,7 @@ const defaultTrips = [
     end_date: '2026-09-13',
     description: 'Quick beach retreat with cousins.',
     budget: 25000,
+    cover_image: 'https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?w=600&auto=format&fit=crop&q=80',
     isPublic: false,
     stops: [
       { id: '104', city: 'Goa', country: 'India', start_date: '2026-09-10', end_date: '2026-09-13', activities: ['Anjuna Beach Sunset', 'Baga Water Sports'] }
@@ -47,7 +49,31 @@ export function getTrips() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultTrips));
     return defaultTrips;
   }
-  return JSON.parse(data);
+  
+  const parsed = JSON.parse(data);
+  let updated = false;
+  
+  // Auto-migrate old cached trips to add cover images if missing
+  const upgraded = parsed.map(t => {
+    if (!t.cover_image) {
+      updated = true;
+      if (t.id === '1') {
+        return { ...t, cover_image: 'https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=600&auto=format&fit=crop&q=80' };
+      } else if (t.id === '2') {
+        return { ...t, cover_image: 'https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?w=600&auto=format&fit=crop&q=80' };
+      } else {
+        return { ...t, cover_image: 'https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=600&auto=format&fit=crop&q=80' };
+      }
+    }
+    return t;
+  });
+  
+  if (updated) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(upgraded));
+    return upgraded;
+  }
+  
+  return parsed;
 }
 
 export function saveTrips(trips) {
@@ -59,7 +85,7 @@ export function getTrip(id) {
   return trips.find(t => t.id === id);
 }
 
-export function addTrip(name, start_date, end_date, description, budget = 50000) {
+export function addTrip(name, start_date, end_date, description, budget = 50000, cover_image = '') {
   const trips = getTrips();
   const newTrip = {
     id: Date.now().toString(),
@@ -68,6 +94,7 @@ export function addTrip(name, start_date, end_date, description, budget = 50000)
     end_date,
     description,
     budget: Number(budget),
+    cover_image: cover_image || 'https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=600&auto=format&fit=crop&q=80',
     isPublic: false,
     stops: [],
     expenses: []
