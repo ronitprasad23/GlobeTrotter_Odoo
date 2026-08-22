@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { getTrip, updateTrip } from '../utils/storage';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { 
   Calendar, MapPin, IndianRupee, ArrowLeft, Plus, 
   Trash2, Clipboard, ClipboardCheck, AlertTriangle, Info, Clock, CheckSquare
@@ -36,9 +35,32 @@ export default function TripDetails() {
 
   const [copied, setCopied] = useState(false);
 
+  const navigate = useNavigate();
+  const auth = JSON.parse(localStorage.getItem('globetrotter_auth') || '{}');
+
   useEffect(() => {
-    setTrip(getTrip(id));
-  }, [id]);
+    if (!auth.isLoggedIn) {
+      navigate('/login');
+      return;
+    }
+    fetchTripDetails();
+  }, [id, auth.isLoggedIn, navigate]);
+
+  const fetchTripDetails = () => {
+    fetch(`http://127.0.0.1:8000/api/trips/${id}/`, {
+      headers: {
+        'Authorization': `Bearer ${auth.token}`
+      }
+    })
+      .then(res => {
+        if (!res.ok) throw new Error('Failed to load trip');
+        return res.json();
+      })
+      .then(data => {
+        setTrip(data);
+      })
+      .catch(err => console.error(err));
+  };
 
   if (!trip) {
     return (
@@ -68,8 +90,22 @@ export default function TripDetails() {
   }, {});
 
   const saveTripState = (updatedTrip) => {
-    setTrip(updatedTrip);
-    updateTrip(id, updatedTrip);
+    fetch(`http://127.0.0.1:8000/api/trips/${id}/`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${auth.token}`
+      },
+      body: JSON.stringify(updatedTrip)
+    })
+      .then(res => {
+        if (!res.ok) throw new Error('Failed to save trip state');
+        return res.json();
+      })
+      .then(data => {
+        setTrip(data);
+      })
+      .catch(err => console.error(err));
   };
 
   const handleAddStop = (e) => {

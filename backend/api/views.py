@@ -160,4 +160,15 @@ def trips_detail_view(request, pk):
         trip.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def public_trip_detail_view(request, pk):
+    try:
+        trip = Trips.objects.get(pk=pk, is_public=True)
+    except Trips.DoesNotExist:
+        return Response({"error": "Public trip not found"}, status=status.HTTP_404_NOT_FOUND)
+
+    serializer = TripsSerializer(trip)
+    return Response(serializer.data, status=status.HTTP_200_OK)
+
 

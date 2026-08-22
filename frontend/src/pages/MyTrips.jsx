@@ -1,6 +1,5 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { getTrips, deleteTrip, updateTrip } from '../utils/storage';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { 
   Calendar, MapPin, Trash2, Edit2, ArrowRight, Compass, Plus, 
   IndianRupee, X, Image as ImageIcon 
@@ -14,7 +13,9 @@ const COVER_PRESETS = [
 ];
 
 export default function MyTrips() {
-  const [trips, setTrips] = useState(getTrips());
+  const navigate = useNavigate();
+  const [trips, setTrips] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
   
   // Edit Modal States
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -27,10 +28,44 @@ export default function MyTrips() {
   const [editCover, setEditCover] = useState('');
   const [editCustomCover, setEditCustomCover] = useState('');
 
+  const auth = JSON.parse(localStorage.getItem('globetrotter_auth') || '{}');
+
+  useEffect(() => {
+    if (!auth.isLoggedIn) {
+      navigate('/login');
+      return;
+    }
+    fetchTrips();
+  }, [auth.isLoggedIn, navigate]);
+
+  const fetchTrips = () => {
+    setIsLoading(true);
+    fetch('http://127.0.0.1:8000/api/trips/', {
+      headers: {
+        'Authorization': `Bearer ${auth.token}`
+      }
+    })
+      .then(res => {
+        if (!res.ok) throw new Error('Unauthorized or failed request');
+        return res.json();
+      })
+      .then(data => {
+        setTrips(data);
+      })
+      .catch(err => console.error(err))
+      .finally(() => setIsLoading(false));
+  };
+
   const handleDelete = (id, name) => {
     if (window.confirm(`Are you sure you want to delete the trip "${name}"?`)) {
-      deleteTrip(id);
-      setTrips(getTrips());
+      fetch(`http://127.0.0.1:8000/api/trips/${id}/`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${auth.token}`
+        }
+      })
+        .then(() => fetchTrips())
+        .catch(err => console.error(err));
     }
   };
 
@@ -58,17 +93,27 @@ export default function MyTrips() {
     e.preventDefault();
     const finalCover = editCustomCover.trim() || editCover || COVER_PRESETS[0].url;
     
-    updateTrip(editTripId, {
-      name: editName,
-      start_date: editStartDate,
-      end_date: editEndDate,
-      description: editDescription,
-      budget: Number(editBudget),
-      cover_image: finalCover
-    });
-
-    setIsEditModalOpen(false);
-    setTrips(getTrips());
+    fetch(`http://127.0.0.1:8000/api/trips/${editTripId}/`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${auth.token}`
+      },
+      body: JSON.stringify({
+        name: editName,
+        start_date: editStartDate,
+        end_date: editEndDate,
+        description: editDescription,
+        budget: Number(editBudget),
+        cover_image: finalCover
+      })
+    })
+      .then(res => {
+        if (!res.ok) throw new Error('Failed to update trip');
+        setIsEditModalOpen(false);
+        fetchTrips();
+      })
+      .catch(err => console.error(err));
   };
 
   return (

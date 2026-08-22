@@ -75,6 +75,8 @@ class Trips(models.Model):
     start_date = models.DateField()
     end_date = models.DateField()
     cover_image = models.TextField(blank=True, null=True)
+    budget = models.DecimalField(max_digits=10, decimal_places=2, default=50000)
+    is_public = models.BooleanField(default=False)
     created_at = models.DateTimeField(blank=True, null=True)
 
     class Meta:

@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { addTrip } from '../utils/storage';
 import { ArrowLeft, Image as ImageIcon } from 'lucide-react';
 
 const COVER_PRESETS = [
@@ -23,8 +22,37 @@ export default function CreateTrip() {
   const handleSubmit = (e) => {
     e.preventDefault();
     const finalCover = customCoverUrl.trim() || coverImage;
-    const newTrip = addTrip(name, startDate, endDate, description, budget, finalCover);
-    navigate(`/trips/${newTrip.id}`);
+    const auth = JSON.parse(localStorage.getItem('globetrotter_auth') || '{}');
+
+    fetch('http://127.0.0.1:8000/api/trips/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${auth.token}`
+      },
+      body: JSON.stringify({
+        name,
+        start_date: startDate,
+        end_date: endDate,
+        description,
+        budget: Number(budget),
+        cover_image: finalCover
+      })
+    })
+      .then(res => {
+        if (!res.ok) {
+          return res.json().then(errData => {
+            const errStr = Object.values(errData).flat().join(', ');
+            alert(errStr || 'Failed to create trip');
+            throw new Error('Creation failed');
+          });
+        }
+        return res.json();
+      })
+      .then(newTrip => {
+        navigate(`/trips/${newTrip.id}`);
+      })
+      .catch(err => console.error(err));
   };
 
   return (

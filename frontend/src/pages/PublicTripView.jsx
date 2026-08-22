@@ -1,12 +1,80 @@
-﻿import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { getTrip, getTrips, saveTrips } from '../utils/storage';
 import { Calendar, MapPin, IndianRupee, Compass, Copy } from 'lucide-react';
 
 export default function PublicTripView() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const trip = getTrip(id);
+  const [trip, setTrip] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    fetch(`http://127.0.0.1:8000/api/trips/public/${id}/`)
+      .then(res => {
+        if (!res.ok) throw new Error('Public trip not found');
+        return res.json();
+      })
+      .then(data => {
+        setTrip(data);
+      })
+      .catch(err => console.error(err))
+      .finally(() => setIsLoading(false));
+  }, [id]);
+
+  const handleCopyTrip = () => {
+    const auth = JSON.parse(localStorage.getItem('globetrotter_auth') || '{}');
+    if (!auth.isLoggedIn) {
+      alert('Please log in to copy this trip to your account.');
+      navigate('/login');
+      return;
+    }
+
+    fetch('http://127.0.0.1:8000/api/trips/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${auth.token}`
+      },
+      body: JSON.stringify({
+        name: `Copy of ${trip.name}`,
+        start_date: trip.start_date,
+        end_date: trip.end_date,
+        description: trip.description,
+        budget: Number(trip.budget),
+        cover_image: trip.cover_image
+      })
+    })
+      .then(res => {
+        if (!res.ok) throw new Error('Failed to copy trip');
+        return res.json();
+      })
+      .then(newTrip => {
+        return fetch(`http://127.0.0.1:8000/api/trips/${newTrip.id}/`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${auth.token}`
+          },
+          body: JSON.stringify({
+            stops: trip.stops.map(s => ({ ...s, id: undefined })),
+            expenses: trip.expenses.map(e => ({ ...e, id: undefined }))
+          })
+        });
+      })
+      .then(res => {
+        if (!res.ok) throw new Error('Failed to copy nested stops and expenses');
+        alert('Trip successfully copied to your dashboard!');
+        navigate('/trips');
+      })
+      .catch(err => {
+        console.error(err);
+        alert('Error copying trip');
+      });
+  };
+
+  if (isLoading) {
+    return <div className="text-center my-12 text-sm text-gray-500">Loading public itinerary...</div>;
+  }
 
   if (!trip) {
     return (
@@ -27,20 +95,6 @@ export default function PublicTripView() {
     acc[cat] = trip.expenses ? trip.expenses.filter(e => e.category === cat).reduce((sum, e) => sum + e.amount, 0) : 0;
     return acc;
   }, {});
-
-  const handleCopyTrip = () => {
-    const trips = getTrips();
-    const copiedTrip = {
-      ...trip,
-      id: Date.now().toString(),
-      name: `Copy of ${trip.name}`,
-      isPublic: false
-    };
-    trips.push(copiedTrip);
-    saveTrips(trips);
-    alert('Trip successfully copied to your dashboard!');
-    navigate('/trips');
-  };
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
