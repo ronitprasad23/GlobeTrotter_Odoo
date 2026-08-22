@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Compass, Menu, X } from 'lucide-react';
 
@@ -17,23 +17,23 @@ export default function Navbar() {
   return (
     <nav className="bg-white border-b border-gray-100 sticky top-0 z-50 shadow-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-16">
+        <div className="flex justify-between h-20"> {/* Increased navbar height */}
           <div className="flex">
             <Link to="/" className="flex-shrink-0 flex items-center">
-              <Compass className="h-8 w-8 text-primary-500 animate-spin-slow mr-2" />
-              <span className="font-extrabold text-2xl tracking-tight bg-gradient-to-r from-primary-500 to-amber-500 bg-clip-text text-transparent">
+              <Compass className="h-9 w-9 text-primary-500 mr-2 shrink-0 animate-spin-slow" />
+              <span className="font-extrabold text-3xl tracking-tight bg-gradient-to-r from-primary-500 to-amber-500 bg-clip-text text-transparent">
                 GlobeTrotter
               </span>
             </Link>
-            <div className="hidden sm:ml-8 sm:flex sm:space-x-8">
+            <div className="hidden sm:ml-10 sm:flex sm:space-x-8">
               {navLinks.map((link) => (
                 <Link
                   key={link.name}
                   to={link.path}
-                  className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-bold transition-colors ${
+                  className={`inline-flex items-center px-1 pt-1 border-b-2 text-base font-bold transition-colors ${
                     isActive(link.path)
-                      ? 'border-primary-550 text-gray-900'
-                      : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-750'
+                      ? 'border-primary-500 text-gray-900'
+                      : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
                   }`}
                 >
                   {link.name}
@@ -42,16 +42,16 @@ export default function Navbar() {
             </div>
           </div>
           
-          <div className="hidden sm:ml-6 sm:flex sm:items-center sm:space-x-4">
+          <div className="hidden sm:ml-6 sm:flex sm:items-center sm:space-x-6">
             <Link
               to="/login"
-              className="text-sm font-bold text-gray-550 hover:text-gray-900 transition-colors"
+              className="text-base font-bold text-gray-550 hover:text-gray-900 transition-colors"
             >
               Sign In
             </Link>
             <Link
               to="/signup"
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-extrabold rounded-full shadow-md text-white bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 hover:shadow-lg transition-all"
+              className="inline-flex items-center px-6 py-3 border border-transparent text-base font-extrabold rounded-full shadow-md text-white bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 hover:shadow-lg transition-all"
             >
               Start Planning
             </Link>
@@ -76,7 +76,7 @@ export default function Navbar() {
                 key={link.name}
                 to={link.path}
                 onClick={() => setIsOpen(false)}
-                className={`block pl-3 pr-4 py-2 border-l-4 text-base font-bold transition-all ${
+                className={`block pl-3 pr-4 py-2.5 border-l-4 text-base font-bold transition-all ${
                   isActive(link.path)
                     ? 'bg-primary-50 border-primary-500 text-primary-700'
                     : 'border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700'
@@ -90,14 +90,14 @@ export default function Navbar() {
             <Link
               to="/login"
               onClick={() => setIsOpen(false)}
-              className="block text-center w-full px-4 py-2 border border-gray-300 rounded-full text-base font-bold text-gray-700 bg-white hover:bg-gray-50 transition-colors"
+              className="block text-center w-full px-4 py-2.5 border border-gray-300 rounded-full text-base font-bold text-gray-700 bg-white hover:bg-gray-50 transition-colors"
             >
               Sign In
             </Link>
             <Link
               to="/signup"
               onClick={() => setIsOpen(false)}
-              className="block text-center w-full px-4 py-2 border border-transparent rounded-full text-base font-bold text-white bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 shadow"
+              className="block text-center w-full px-4 py-2.5 border border-transparent rounded-full text-base font-bold text-white bg-gradient-to-r from-primary-50 to-primary-600 hover:from-primary-600 hover:to-primary-700 shadow"
             >
               Start Planning
             </Link>
