@@ -44,7 +44,7 @@ class TripsSerializer(serializers.ModelSerializer):
                     "description": item.activity.description if item.activity else "",
                     "activity_type": item.activity.activity_type if item.activity else "Sightseeing",
                     "duration_minutes": item.activity.duration_minutes if item.activity else 60,
-                    "estimated_cost": float(item.activity.estimated_cost) if item.activity else 0
+                    "estimated_cost": float(item.activity.estimated_cost) if item.activity and item.activity.estimated_cost is not None else 0.0
                 } if item.activity else None
             })
         ret['itinerary_items'] = itinerary_list
