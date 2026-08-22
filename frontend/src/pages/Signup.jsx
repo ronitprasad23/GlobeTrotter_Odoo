@@ -101,7 +101,7 @@ export default function Signup() {
 
       {/* Right Panel: Clean Big Form (Visible on all devices) */}
       <div className="w-full lg:w-1/2 flex flex-col justify-center items-center px-6 py-12 md:px-12 bg-gray-50/50">
-        <div className="w-full max-w-md bg-white rounded-2xl shadow-sm border border-gray-100 p-8 md:p-10 relative overflow-hidden">
+        <div className="w-full max-w-xl bg-white rounded-3xl shadow-md border border-gray-100 p-10 md:p-12 relative overflow-hidden">
           <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-primary-500 to-amber-500"></div>
 
           {/* Mobile Logo Brand */}
