@@ -52,17 +52,42 @@ export default function Signup() {
     setIsLoading(true);
     const finalProfileImage = customImageUrl.trim() || profileImage;
 
-    setTimeout(() => {
-      setIsLoading(false);
-      const newUser = {
+    fetch('http://127.0.0.1:8000/api/auth/signup/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
         name,
         email,
-        profile_image: finalProfileImage,
-        created_at: new Date().toISOString()
-      };
-      localStorage.setItem('globetrotter_auth', JSON.stringify({ ...newUser, isLoggedIn: true }));
-      navigate('/');
-    }, 1000);
+        password,
+        profile_image: finalProfileImage
+      })
+    })
+      .then(async (res) => {
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error || 'Failed to register');
+        }
+        return data;
+      })
+      .then((data) => {
+        localStorage.setItem('globetrotter_auth', JSON.stringify({
+          id: data.user.id,
+          name: data.user.name,
+          email: data.user.email,
+          profile_image: data.user.profile_image,
+          token: data.token,
+          isLoggedIn: true
+        }));
+        navigate('/');
+      })
+      .catch((err) => {
+        setError(err.message || 'Something went wrong. Please try again.');
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
   };
 
   return (

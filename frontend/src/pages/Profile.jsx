@@ -1,10 +1,26 @@
-﻿import React from 'react';
-import { User, Settings, Shield } from 'lucide-react';
+import React, { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { User as UserIcon, Settings, Shield } from 'lucide-react';
 
 export default function Profile() {
+  const navigate = useNavigate();
+  const authData = JSON.parse(localStorage.getItem('globetrotter_auth') || '{}');
+  const isLoggedIn = !!authData.isLoggedIn;
+
+  useEffect(() => {
+    if (!isLoggedIn) {
+      navigate('/login');
+    }
+  }, [isLoggedIn, navigate]);
+
+  if (!isLoggedIn) {
+    return null;
+  }
+
   const user = {
-    name: 'Zara Smith',
-    email: 'zara.smith@example.com',
+    name: authData.name || 'User',
+    email: authData.email || '',
+    profile_image: authData.profile_image || '',
     joined: 'August 2026',
     preferences: {
       currency: 'INR (₹)',
@@ -19,9 +35,17 @@ export default function Profile() {
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-white rounded-lg shadow border border-gray-100 p-6 flex flex-col items-center">
-          <div className="w-24 h-24 rounded-full bg-primary-100 flex items-center justify-center text-primary-600 mb-4">
-            <User className="h-12 w-12" />
-          </div>
+          {user.profile_image ? (
+            <img
+              src={user.profile_image}
+              alt={user.name}
+              className="w-24 h-24 rounded-full object-cover border-2 border-primary-200 mb-4"
+            />
+          ) : (
+            <div className="w-24 h-24 rounded-full bg-primary-100 flex items-center justify-center text-primary-600 mb-4">
+              <UserIcon className="h-12 w-12" />
+            </div>
+          )}
           <h2 className="text-lg font-bold text-gray-900">{user.name}</h2>
           <span className="text-sm text-gray-500">{user.email}</span>
           <span className="text-xs text-gray-400 mt-2">Member since {user.joined}</span>

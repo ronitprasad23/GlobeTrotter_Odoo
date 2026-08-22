@@ -29,11 +29,40 @@ export default function Login() {
 
     setIsLoading(true);
     
-    setTimeout(() => {
-      setIsLoading(false);
-      localStorage.setItem('globetrotter_auth', JSON.stringify({ email, isLoggedIn: true }));
-      navigate('/');
-    }, 1000);
+    fetch('http://127.0.0.1:8000/api/auth/login/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        email,
+        password
+      })
+    })
+      .then(async (res) => {
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error || 'Failed to sign in');
+        }
+        return data;
+      })
+      .then((data) => {
+        localStorage.setItem('globetrotter_auth', JSON.stringify({
+          id: data.user.id,
+          name: data.user.name,
+          email: data.user.email,
+          profile_image: data.user.profile_image,
+          token: data.token,
+          isLoggedIn: true
+        }));
+        navigate('/');
+      })
+      .catch((err) => {
+        setError(err.message || 'Something went wrong. Please try again.');
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
   };
 
   return (
