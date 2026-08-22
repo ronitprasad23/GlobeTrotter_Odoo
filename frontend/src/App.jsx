@@ -8,6 +8,7 @@ import MyTrips from './pages/MyTrips';
 import CreateTrip from './pages/CreateTrip';
 import TripDetails from './pages/TripDetails';
 import Profile from './pages/Profile';
+import PublicTripView from './pages/PublicTripView';
 import NotFound from './pages/NotFound';
 
 function App() {
@@ -24,6 +25,7 @@ function App() {
           <Route path="profile" element={<Profile />} />
           <Route path="*" element={<NotFound />} />
         </Route>
+        <Route path="share/:id" element={<PublicTripView />} />
       </Routes>
     </BrowserRouter>
   );

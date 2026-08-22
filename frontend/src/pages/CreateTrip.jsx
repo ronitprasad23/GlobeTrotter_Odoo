@@ -1,12 +1,19 @@
-﻿import React from 'react';
+﻿import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { addTrip } from '../utils/storage';
 
 export default function CreateTrip() {
   const navigate = useNavigate();
+  const [name, setName] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [description, setDescription] = useState('');
+  const [budget, setBudget] = useState(50000);
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    navigate('/trips');
+    const newTrip = addTrip(name, startDate, endDate, description, budget);
+    navigate(`/trips/${newTrip.id}`);
   };
 
   return (
@@ -19,16 +26,20 @@ export default function CreateTrip() {
             <input
               type="text"
               required
+              value={name}
+              onChange={(e) => setName(e.target.value)}
               placeholder="e.g. Euro Summer 2026"
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
             />
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
               <input
                 type="date"
                 required
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
               />
             </div>
@@ -37,6 +48,19 @@ export default function CreateTrip() {
               <input
                 type="date"
                 required
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Budget (INR ₹)</label>
+              <input
+                type="number"
+                required
+                value={budget}
+                onChange={(e) => setBudget(e.target.value)}
+                placeholder="50000"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
               />
             </div>
@@ -45,6 +69,8 @@ export default function CreateTrip() {
             <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
             <textarea
               rows="4"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
               placeholder="Tell us about the trip..."
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
             ></textarea>
