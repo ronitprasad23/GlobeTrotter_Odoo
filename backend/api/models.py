@@ -89,6 +89,10 @@ class Users(models.Model):
     profile_image = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(blank=True, null=True)
 
+    @property
+    def is_authenticated(self):
+        return True
+
     class Meta:
         managed = False
         db_table = 'users'
