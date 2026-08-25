@@ -28,52 +28,7 @@ export const MASTER_ACTIVITIES = [
   { id: '508', city_id: '40', name: 'Colosseum Guided Tour', description: 'Learn about gladiators in ancient Rome', activity_type: 'History', duration_minutes: 150, estimated_cost: 3200, image_url: '' }
 ];
 
-const defaultTrips = [
-  {
-    id: '1',
-    name: 'Summer in Europe',
-    start_date: '2026-06-15',
-    end_date: '2026-06-25',
-    description: 'Exploring France and Italy with friends.',
-    budget: 120000,
-    cover_image: 'https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=600&auto=format&fit=crop&q=80',
-    isPublic: true,
-    stops: [
-      { id: '101', city_id: '10', start_date: '2026-06-15', end_date: '2026-06-20', stop_order: 1 },
-      { id: '102', city_id: '40', start_date: '2026-06-21', end_date: '2026-06-25', stop_order: 2 }
-    ],
-    itinerary_items: [
-      { id: '801', trip_stop_id: '101', activity_id: '501', date: '2026-06-16', start_time: '10:00', end_time: '12:00', sort_order: 1 },
-      { id: '802', trip_stop_id: '101', activity_id: '502', date: '2026-06-17', start_time: '13:00', end_time: '16:00', sort_order: 2 },
-      { id: '803', trip_stop_id: '102', activity_id: '508', date: '2026-06-22', start_time: '09:00', end_time: '11:30', sort_order: 1 }
-    ],
-    expenses: [
-      { id: '201', title: 'Flights', amount: 45000, category: 'Transport' },
-      { id: '202', title: 'Hotel Paris', amount: 25000, category: 'Lodging' },
-      { id: '204', title: 'Louvre Tickets', amount: 3000, category: 'Activities' }
-    ]
-  },
-  {
-    id: '2',
-    name: 'Goa Weekend Getaway',
-    start_date: '2026-09-10',
-    end_date: '2026-09-13',
-    description: 'Quick beach retreat with cousins.',
-    budget: 25000,
-    cover_image: 'https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?w=600&auto=format&fit=crop&q=80',
-    isPublic: false,
-    stops: [
-      { id: '104', city_id: '30', start_date: '2026-09-10', end_date: '2026-09-13', stop_order: 1 }
-    ],
-    itinerary_items: [
-      { id: '804', trip_stop_id: '104', activity_id: '506', date: '2026-09-11', start_time: '17:00', end_time: '19:00', sort_order: 1 }
-    ],
-    expenses: [
-      { id: '206', title: 'Train Tickets', amount: 4000, category: 'Transport' },
-      { id: '207', title: 'Beach Resort', amount: 12000, category: 'Lodging' }
-    ]
-  }
-];
+const defaultTrips = [];
 
 export function getCities() {
   const data = localStorage.getItem(CITIES_STORAGE_KEY);
@@ -112,9 +67,14 @@ export function getTrips() {
   }
   
   const parsed = JSON.parse(data);
-  let updated = false;
+  // Clean up any remaining dummy/mock trips
+  const filtered = parsed.filter(t => t.id !== '1' && t.id !== '2');
+  if (filtered.length !== parsed.length) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
+  }
   
-  const upgraded = parsed.map(t => {
+  let updated = false;
+  const upgraded = filtered.map(t => {
     let changed = false;
     
     if (!t.cover_image) {

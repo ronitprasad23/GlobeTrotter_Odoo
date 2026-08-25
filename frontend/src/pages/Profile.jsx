@@ -4,6 +4,7 @@ import { getUserProfile, saveUserProfile, getCities } from '../utils/storage';
 import { 
   User, Settings, Shield, Globe, Star, BarChart3, Trash2, Heart, Search, Save, CheckCircle
 } from 'lucide-react';
+import Avatar, { normalizeImageUrl } from '../components/Avatar';
 
 export default function Profile() {
   const navigate = useNavigate();
@@ -52,18 +53,45 @@ export default function Profile() {
 
   const handleSaveProfile = (e) => {
     e.preventDefault();
+    const normalizedUrl = normalizeImageUrl(photoUrl);
+
+    // Call backend API if user is authenticated with backend
+    if (authData.token) {
+      fetch('http://127.0.0.1:8000/api/auth/profile/', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authData.token}`
+        },
+        body: JSON.stringify({
+          name,
+          email,
+          profile_image: normalizedUrl
+        })
+      })
+      .then(res => {
+        if (!res.ok) throw new Error('Failed to update profile on server');
+        return res.json();
+      })
+      .then(data => {
+        console.log('Profile updated in backend:', data);
+      })
+      .catch(err => console.error(err));
+    }
+
     const updated = {
       ...profile,
       name,
       email,
-      photo_url: photoUrl,
+      photo_url: normalizedUrl,
       language
     };
     saveUserProfile(updated);
     setProfile(updated);
+    setPhotoUrl(normalizedUrl);
     
     // Sync back to authData
-    const updatedAuth = { ...authData, name, email, profile_image: photoUrl };
+    const updatedAuth = { ...authData, name, email, profile_image: normalizedUrl };
     localStorage.setItem('globetrotter_auth', JSON.stringify(updatedAuth));
 
     setIsSavedAlert(true);
@@ -124,10 +152,11 @@ export default function Profile() {
         <div className="lg:col-span-2 space-y-6">
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 md:p-8 flex flex-col md:flex-row gap-6 items-center md:items-start">
             <div className="relative shrink-0">
-              <img 
-                src={photoUrl || 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80'} 
-                alt={name} 
-                className="w-28 h-28 rounded-full object-cover border-4 border-primary-50 ring-4 ring-primary-500/20"
+              <Avatar 
+                src={photoUrl} 
+                name={name} 
+                className="w-28 h-28 border-4 border-primary-50 ring-4 ring-primary-500/20"
+                textClassName="text-4xl"
               />
               <div className="absolute bottom-0 right-0 bg-primary-500 text-white p-1.5 rounded-full shadow border-2 border-white">
                 <Settings className="h-4.5 w-4.5" />

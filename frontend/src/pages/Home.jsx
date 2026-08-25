@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { getTrips, addTrip } from '../utils/storage';
 import { 
@@ -7,8 +7,34 @@ import {
 
 export default function Home() {
   const navigate = useNavigate();
-  const [trips, setTrips] = useState(getTrips());
+  const [trips, setTrips] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
+
+  const authData = JSON.parse(localStorage.getItem('globetrotter_auth') || '{}');
+  const isLoggedIn = !!authData.isLoggedIn;
+
+  useEffect(() => {
+    if (isLoggedIn && authData.token) {
+      fetch('http://127.0.0.1:8000/api/trips/', {
+        headers: {
+          'Authorization': `Bearer ${authData.token}`
+        }
+      })
+        .then(res => {
+          if (!res.ok) throw new Error('Failed to fetch trips');
+          return res.json();
+        })
+        .then(data => {
+          setTrips(data);
+        })
+        .catch(err => {
+          console.error('Error fetching backend trips:', err);
+          setTrips(getTrips());
+        });
+    } else {
+      setTrips(getTrips());
+    }
+  }, [isLoggedIn, authData.token]);
 
   const totalTrips = trips.length;
   const totalBudget = trips.reduce((sum, t) => sum + Number(t.budget), 0);
@@ -35,37 +61,77 @@ export default function Home() {
     returnDate.setDate(returnDate.getDate() + 5);
     const returnDateStr = returnDate.toISOString().split('T')[0];
 
-    const newTrip = addTrip(
-      `Trip to ${cityName}`,
-      todayStr,
-      returnDateStr,
-      `Quick planned journey to explore the popular sights and local culture of ${cityName}, ${country}.`,
-      costIndex > 3.0 ? 95000 : 35000,
-      imageUrl
-    );
+    const tripName = `Trip to ${cityName}`;
+    const description = `Quick planned journey to explore the popular sights and local culture of ${cityName}, ${country}.`;
+    const budget = costIndex > 3.0 ? 95000 : 35000;
+    const cover_image = imageUrl;
 
-    // Prepopulate a stop for that city
-    const cityId = popularCities.find(c => c.name === cityName)?.id || '10';
-    const updatedStops = [
-      {
-        id: Date.now().toString(),
-        city_id: cityId,
-        start_date: todayStr,
-        end_date: returnDateStr,
-        stop_order: 1
+    if (isLoggedIn && authData.token) {
+      const cityId = popularCities.find(c => c.name === cityName)?.id || '10';
+      fetch('http://127.0.0.1:8000/api/trips/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authData.token}`
+        },
+        body: JSON.stringify({
+          name: tripName,
+          start_date: todayStr,
+          end_date: returnDateStr,
+          description,
+          budget,
+          cover_image,
+          stops: [
+            {
+              city_id: cityId,
+              start_date: todayStr,
+              end_date: returnDateStr,
+              stop_order: 1
+            }
+          ]
+        })
+      })
+      .then(res => {
+        if (!res.ok) throw new Error('Failed to quick-plan trip');
+        return res.json();
+      })
+      .then(newTrip => {
+        navigate(`/trips/${newTrip.id}`);
+      })
+      .catch(err => console.error(err));
+    } else {
+      const newTrip = addTrip(
+        tripName,
+        todayStr,
+        returnDateStr,
+        description,
+        budget,
+        cover_image
+      );
+
+      // Prepopulate a stop for that city
+      const cityId = popularCities.find(c => c.name === cityName)?.id || '10';
+      const updatedStops = [
+        {
+          id: Date.now().toString(),
+          city_id: cityId,
+          start_date: todayStr,
+          end_date: returnDateStr,
+          stop_order: 1
+        }
+      ];
+      
+      // Save stops directly
+      const tripsList = getTrips();
+      const matchIdx = tripsList.findIndex(t => t.id === newTrip.id);
+      if (matchIdx !== -1) {
+        tripsList[matchIdx].stops = updatedStops;
+        localStorage.setItem('globetrotter_trips', JSON.stringify(tripsList));
       }
-    ];
-    
-    // Save stops directly
-    const tripsList = getTrips();
-    const matchIdx = tripsList.findIndex(t => t.id === newTrip.id);
-    if (matchIdx !== -1) {
-      tripsList[matchIdx].stops = updatedStops;
-      localStorage.setItem('globetrotter_trips', JSON.stringify(tripsList));
-    }
 
-    setTrips(getTrips());
-    navigate(`/trips/${newTrip.id}`);
+      setTrips(getTrips());
+      navigate(`/trips/${newTrip.id}`);
+    }
   };
 
   return (

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Compass, Menu, X, LogOut, User as UserIcon } from 'lucide-react';
+import Avatar from './Avatar';
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
@@ -58,17 +59,12 @@ export default function Navbar() {
             {isLoggedIn ? (
               <>
                 <div className="flex items-center space-x-3 bg-gray-50 px-4 py-2 rounded-full border border-gray-100">
-                  {authData.profile_image ? (
-                    <img
-                      src={authData.profile_image}
-                      alt={authData.name}
-                      className="h-8 w-8 rounded-full object-cover border border-primary-200"
-                    />
-                  ) : (
-                    <div className="h-8 w-8 rounded-full bg-primary-100 flex items-center justify-center text-primary-600">
-                      <UserIcon className="h-4.5 w-4.5" />
-                    </div>
-                  )}
+                  <Avatar
+                    src={authData.profile_image}
+                    name={authData.name}
+                    className="h-8 w-8 border border-primary-200"
+                    textClassName="text-xs"
+                  />
                   <span className="text-sm font-bold text-gray-700">{authData.name}</span>
                 </div>
                 <button
@@ -130,17 +126,12 @@ export default function Navbar() {
             {isLoggedIn ? (
               <>
                 <div className="flex items-center space-x-3 px-3 py-2">
-                  {authData.profile_image ? (
-                    <img
-                      src={authData.profile_image}
-                      alt={authData.name}
-                      className="h-9 w-9 rounded-full object-cover border border-primary-200"
-                    />
-                  ) : (
-                    <div className="h-9 w-9 rounded-full bg-primary-100 flex items-center justify-center text-primary-600">
-                      <UserIcon className="h-5 w-5" />
-                    </div>
-                  )}
+                  <Avatar
+                    src={authData.profile_image}
+                    name={authData.name}
+                    className="h-9 w-9 border border-primary-200"
+                    textClassName="text-sm"
+                  />
                   <div>
                     <div className="text-sm font-bold text-gray-800">{authData.name}</div>
                     <div className="text-xs font-semibold text-gray-400">{authData.email}</div>

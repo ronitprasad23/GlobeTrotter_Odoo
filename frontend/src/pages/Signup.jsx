@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { getTrips, saveTrips } from '../utils/storage';
 import { Compass, Eye, EyeOff, Mail, Lock, User, Image, AlertCircle } from 'lucide-react';
+import { normalizeImageUrl } from '../components/Avatar';
 
 const PRESET_AVATARS = [
   { name: 'Backpacker', url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80' },
@@ -50,7 +51,7 @@ export default function Signup() {
     }
 
     setIsLoading(true);
-    const finalProfileImage = customImageUrl.trim() || profileImage;
+    const finalProfileImage = normalizeImageUrl(customImageUrl.trim() || profileImage);
 
     fetch('http://127.0.0.1:8000/api/auth/signup/', {
       method: 'POST',
