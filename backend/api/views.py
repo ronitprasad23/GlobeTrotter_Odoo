@@ -125,6 +125,56 @@ def login_view(request):
         }
     }, status=status.HTTP_200_OK)
 
+@api_view(['PUT'])
+@permission_classes([IsAuthenticated])
+def profile_update_view(request):
+    user = request.user
+    name = request.data.get('name')
+    email = request.data.get('email')
+    profile_image = request.data.get('profile_image')
+
+    if not name or not email:
+        return Response(
+            {"error": "name and email are required fields"},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    if not re.match(r'^[^@]+@[^@]+\.[^@]+$', email):
+        return Response(
+            {"error": "Invalid email address format"},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    # Check if email is already taken by another user
+    if Users.objects.filter(email=email).exclude(id=user.id).exists():
+        return Response(
+            {"error": "A user with this email already exists"},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    try:
+        user.name = name
+        user.email = email
+        if profile_image is not None:
+            user.profile_image = profile_image
+        user.save()
+
+        return Response({
+            "message": "Profile updated successfully",
+            "user": {
+                "id": user.id,
+                "name": user.name,
+                "email": user.email,
+                "profile_image": user.profile_image,
+                "created_at": user.created_at
+            }
+        }, status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response(
+            {"error": f"Failed to update profile: {str(e)}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
 def trips_list_create_view(request):
